@@ -1,15 +1,17 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/firebase/auth-context";
 import { getTask, updateTask } from "@/lib/firebase/tasks";
 import { Task } from "@/types";
 import { X } from "lucide-react";
 import TaskForm from "@/components/tasks/TaskForm";
 
-export default function EditTaskPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
+function EditTaskContent() {
+    const searchParams = useSearchParams();
+    const id = searchParams.get('id');
+    // const id = "debug";
     const { user } = useAuth();
     const router = useRouter();
     const [task, setTask] = useState<Task | null>(null);
@@ -18,6 +20,11 @@ export default function EditTaskPage({ params }: { params: Promise<{ id: string 
 
     useEffect(() => {
         if (!user) return;
+
+        if (!id) {
+            router.push("/today");
+            return;
+        }
 
         const loadTask = async () => {
             const fetchedTask = await getTask(id);
@@ -38,7 +45,7 @@ export default function EditTaskPage({ params }: { params: Promise<{ id: string 
     }, [id, user, router]);
 
     const handleSubmit = async (data: Partial<Task>) => {
-        if (!user) return;
+        if (!user || !id) return;
         setSubmitting(true);
         try {
             await updateTask(id, data);
@@ -69,5 +76,13 @@ export default function EditTaskPage({ params }: { params: Promise<{ id: string 
                 />
             )}
         </div>
+    );
+}
+
+export default function EditTaskPage() {
+    return (
+        <Suspense fallback={<div style={{ paddingTop: '2rem', opacity: 0.5 }}>Loading...</div>}>
+            <EditTaskContent />
+        </Suspense>
     );
 }

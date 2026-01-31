@@ -13,7 +13,7 @@ interface AccountCardProps {
 
 export default function AccountCard({ account, onEdit }: AccountCardProps) {
     return (
-        <Link href={`/accounts/${account.id}`} style={{
+        <Link href={`/account?id=${account.id}`} style={{
             display: 'flex',
             alignItems: 'center',
             padding: '1.25rem',

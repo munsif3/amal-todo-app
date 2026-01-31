@@ -109,7 +109,7 @@ export default function TaskCard({ task, onStatusChange, areaColor }: TaskCardPr
                         Undo
                     </button>
                 ) : (
-                    <Link href={`/tasks/${task.id}/edit`} style={{ opacity: 0.3 }}>
+                    <Link href={`/tasks/edit?id=${task.id}`} style={{ opacity: 0.3 }}>
                         <Pencil size={16} />
                     </Link>
                 )}

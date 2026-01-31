@@ -2,31 +2,28 @@
 
 import { useAuth } from "@/lib/firebase/auth-context";
 import { subscribeToAccountTasks, updateTaskStatus } from "@/lib/firebase/tasks";
-import { getAccount } from "@/lib/firebase/accounts"; // Need to make sure this export exists
+import { getAccount } from "@/lib/firebase/accounts";
 import { Task, Account } from "@/types";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import TaskCard from "@/components/today/TaskCard";
-import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, MoreHorizontal } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 
-export default function AccountDetailsPage() {
+function AccountDetailsContent() {
     const { user } = useAuth();
     const router = useRouter();
-    const params = useParams() as { id: string };
-    const accountId = params.id;
+    const searchParams = useSearchParams();
+    const accountId = searchParams.get('id');
+    // const accountId = "debug";
 
     const [account, setAccount] = useState<Account | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
-    const [loading, setLoading] = useState(true);
+
+    // Derived loading state based on presence of data, initially true
+    const [loadingAccount, setLoadingAccount] = useState(true);
 
     useEffect(() => {
         if (!user || !accountId) return;
-
-        // Fetch Account Details
-        // Note: We might need to implement subscribeToAccount or just get once. 
-        // For MVP, get once is fine, but subscribe is better for updates.
-        // Let's assume we have a way to get it or I'll implement it.
-        // For now, let's just fetch tasks.
 
         const unsubscribeTasks = subscribeToAccountTasks(user.uid, accountId, (fetchedTasks) => {
             setTasks(fetchedTasks);
@@ -37,7 +34,6 @@ export default function AccountDetailsPage() {
         };
     }, [user, accountId]);
 
-    // Separate effect for fetching account details to keep it clean
     useEffect(() => {
         if (!accountId) return;
 
@@ -45,6 +41,7 @@ export default function AccountDetailsPage() {
             if (acc) {
                 setAccount(acc);
             }
+            setLoadingAccount(false);
         });
     }, [accountId]);
 
@@ -128,5 +125,13 @@ export default function AccountDetailsPage() {
                 </section>
             )}
         </div>
+    );
+}
+
+export default function AccountDetailsPage() {
+    return (
+        <Suspense fallback={<div style={{ opacity: 0.5, padding: '2rem 0' }}>Loading area...</div>}>
+            <AccountDetailsContent />
+        </Suspense>
     );
 }
