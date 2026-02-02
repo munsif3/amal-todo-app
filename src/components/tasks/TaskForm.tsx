@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { subscribeToAccounts } from "@/lib/firebase/accounts";
+import { subscribeToTasks } from "@/lib/firebase/tasks";
 import { Account, Task } from "@/types";
 import { Input, Textarea, Button } from "@/components/ui/Form";
 import { Timestamp } from "firebase/firestore";
@@ -18,6 +19,7 @@ interface TaskFormProps {
 
 export default function TaskForm({ userId, initialData, onSubmit, submitLabel = "Save", isSubmitting = false }: TaskFormProps) {
     const [accounts, setAccounts] = useState<Account[]>([]);
+    const [tasks, setTasks] = useState<Task[]>([]);
     const [title, setTitle] = useState(initialData?.title || "");
     const [description, setDescription] = useState(initialData?.description || "");
     const [accountId, setAccountId] = useState(initialData?.accountId || "");
@@ -32,23 +34,57 @@ export default function TaskForm({ userId, initialData, onSubmit, submitLabel = 
     };
 
     const [deadline, setDeadline] = useState(formatTimestampToInput(initialData?.deadline));
+    const [emailSubject, setEmailSubject] = useState("");
+    const [emailLink, setEmailLink] = useState("");
+    const [dependencies, setDependencies] = useState<string[]>(initialData?.dependencies || []);
+
+    useEffect(() => {
+        if (initialData?.references) {
+            const emailRef = initialData.references.find(r => r.type === 'email');
+            if (emailRef) {
+                setEmailSubject(emailRef.label);
+                setEmailLink(emailRef.url || "");
+            }
+        }
+        if (initialData?.dependencies) {
+            setDependencies(initialData.dependencies);
+        }
+    }, [initialData]);
 
     useEffect(() => {
         if (userId) {
-            const unsubscribe = subscribeToAccounts(userId, setAccounts);
-            return () => unsubscribe();
+            const unsubscribeAccounts = subscribeToAccounts(userId, setAccounts);
+            const unsubscribeTasks = subscribeToTasks(userId, setTasks);
+            return () => {
+                unsubscribeAccounts();
+                unsubscribeTasks();
+            };
         }
     }, [userId]);
+
+    // Filter available tasks for dependencies: exclude self and done tasks
+    const availableTasks = tasks.filter(t => t.id !== initialData?.id && t.status !== 'done');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!title) return;
+
+        const references = [];
+        if (emailSubject || emailLink) {
+            references.push({
+                type: 'email' as const,
+                label: emailSubject || "No Subject",
+                url: emailLink
+            });
+        }
 
         await onSubmit({
             title,
             description,
             accountId: accountId || null,
             deadline: deadline ? Timestamp.fromDate(new Date(deadline)) : null,
+            dependencies,
+            references,
         });
     };
 
@@ -113,6 +149,50 @@ export default function TaskForm({ userId, initialData, onSubmit, submitLabel = 
                         <p style={{ fontSize: '0.875rem', opacity: 0.5, fontStyle: 'italic' }}>
                             No areas created yet.
                         </p>
+                    )}
+                </div>
+            </div>
+
+            <div style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: 'rgba(0,0,0,0.02)', borderRadius: '8px' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '1rem', color: '#666' }}>Email Reference</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <Input
+                        label="Email Subject"
+                        placeholder="Subject line..."
+                        value={emailSubject}
+                        onChange={(e) => setEmailSubject(e.target.value)}
+                    />
+                    <Input
+                        label="Email Link / Deep Link"
+                        placeholder="message://... or https://..."
+                        value={emailLink}
+                        onChange={(e) => setEmailLink(e.target.value)}
+                    />
+                </div>
+            </div>
+
+            <div style={{ marginBottom: '2rem' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem', opacity: 0.7 }}>Blocked By (Dependencies)</label>
+                <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.5rem' }}>
+                    {availableTasks.length === 0 ? (
+                        <p style={{ fontSize: '0.875rem', color: '#888', fontStyle: 'italic', padding: '0.5rem' }}>No other active tasks to block this one.</p>
+                    ) : (
+                        availableTasks.map(t => (
+                            <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={dependencies.includes(t.id)}
+                                    onChange={(e) => {
+                                        if (e.target.checked) {
+                                            setDependencies([...dependencies, t.id]);
+                                        } else {
+                                            setDependencies(dependencies.filter(id => id !== t.id));
+                                        }
+                                    }}
+                                />
+                                <span style={{ fontSize: '0.875rem' }}>{t.title}</span>
+                            </label>
+                        ))
                     )}
                 </div>
             </div>

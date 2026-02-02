@@ -11,9 +11,10 @@ interface TaskCardProps {
     task: Task;
     onStatusChange: (status: Task['status']) => void;
     areaColor?: string;
+    isBlocked?: boolean;
 }
 
-export default function TaskCard({ task, onStatusChange, areaColor }: TaskCardProps) {
+export default function TaskCard({ task, onStatusChange, areaColor, isBlocked = false }: TaskCardProps) {
     const x = useMotionValue(0);
 
     // Transform x position to colors for swipe actions
@@ -24,11 +25,13 @@ export default function TaskCard({ task, onStatusChange, areaColor }: TaskCardPr
     );
 
     const handleDragEnd = (_: any, info: any) => {
-        if (task.status === 'done') return;
+        if (task.status === 'done' || isBlocked) return;
 
         if (info.offset.x > 100) {
+            if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50);
             onStatusChange('done');
         } else if (info.offset.x < -100) {
+            if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50);
             onStatusChange('waiting');
         }
     };
@@ -53,7 +56,7 @@ export default function TaskCard({ task, onStatusChange, areaColor }: TaskCardPr
 
             <motion.div
                 style={{
-                    x,
+                    x: isBlocked ? 0 : x,
                     background,
                     padding: '1.25rem',
                     borderRadius: 'var(--radius)',
@@ -61,15 +64,16 @@ export default function TaskCard({ task, onStatusChange, areaColor }: TaskCardPr
                     borderLeft: areaColor ? `4px solid ${areaColor}` : (task.accountId ? `4px solid ${DEFAULT_ACCOUNT_COLOR}` : '1px solid var(--border)'),
                     position: 'relative',
                     zIndex: 1,
-                    display: 'flex', // Restored flex layout
-                    alignItems: 'center', // Restored alignment
-                    gap: '1rem', // Restored gap
-                    cursor: task.status === 'done' ? 'default' : 'grab'
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem',
+                    cursor: task.status === 'done' || isBlocked ? 'default' : 'grab',
+                    opacity: isBlocked ? 0.7 : 1,
                 }}
-                drag={task.status === 'done' ? false : "x"}
+                drag={task.status === 'done' || isBlocked ? false : "x"}
                 dragConstraints={{ left: 0, right: 0 }}
                 onDragEnd={handleDragEnd}
-                whileTap={{ cursor: 'grabbing' }}
+                whileTap={{ cursor: isBlocked ? 'not-allowed' : 'grabbing' }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
                 <div style={{ flex: 1 }}>
@@ -78,8 +82,12 @@ export default function TaskCard({ task, onStatusChange, areaColor }: TaskCardPr
                         fontWeight: '500',
                         color: task.status === 'done' ? 'var(--status-done)' : 'var(--foreground)',
                         textDecoration: task.status === 'done' ? 'line-through' : 'none',
-                        marginBottom: '0.25rem'
+                        marginBottom: '0.25rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
                     }}>
+                        {isBlocked && <span style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: '#f0f0f0', color: '#888' }}>BLOCKED</span>}
                         {task.title}
                     </h3>
                     {task.description && (
@@ -93,6 +101,28 @@ export default function TaskCard({ task, onStatusChange, areaColor }: TaskCardPr
                             <span style={{ fontSize: '0.75rem' }}>
                                 {task.deadline.toDate().toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </span>
+                        </div>
+                    )}
+                    {task.references && task.references.length > 0 && (
+                        <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            {task.references.map((ref, idx) => (
+                                <a key={idx} href={ref.url} target="_blank" rel="noopener noreferrer" style={{
+                                    fontSize: '0.75rem',
+                                    color: 'var(--primary)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.25rem',
+                                    textDecoration: 'none',
+                                    backgroundColor: 'rgba(0,0,0,0.03)',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px'
+                                }}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <span>{ref.type === 'email' ? '✉️' : '🔗'}</span>
+                                    {ref.label}
+                                </a>
+                            ))}
                         </div>
                     )}
                 </div>

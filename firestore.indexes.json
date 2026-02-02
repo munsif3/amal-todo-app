@@ -45,6 +45,34 @@
                     "order": "DESCENDING"
                 }
             ]
+        },
+        {
+            "collectionGroup": "routines",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "ownerId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "title",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "meetings",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "ownerId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "startTime",
+                    "order": "ASCENDING"
+                }
+            ]
         }
     ],
     "fieldOverrides": []

@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CheckCircle2, LayoutGrid, Plus, Repeat, User } from "lucide-react";
+import { Calendar, CheckCircle2, LayoutGrid, Plus, Repeat, User } from "lucide-react";
 
 const navItems = [
     { label: "Today", href: "/today", icon: CheckCircle2 },
     { label: "Areas", href: "/accounts", icon: LayoutGrid },
     { label: "Add", href: "/tasks/new", icon: Plus, isAction: true },
     { label: "Routines", href: "/routines", icon: Repeat },
+    { label: "Meetings", href: "/meetings", icon: Calendar },
     { label: "Profile", href: "/profile", icon: User },
 ];
 
