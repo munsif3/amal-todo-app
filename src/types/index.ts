@@ -97,3 +97,18 @@ export type UpdateMeetingInput = Partial<Omit<Meeting, "id" | "ownerId">>;
 
 export type CreateRoutineInput = Partial<Omit<Routine, "id" | "ownerId" | "completionLog">>;
 export type UpdateRoutineInput = Partial<Omit<Routine, "id" | "ownerId">>;
+
+export interface Note {
+    id: string;
+    ownerId: string;
+    accountId: string;
+    title: string;
+    content: string; // Markdown
+    type: 'text' | 'checklist';
+    isPinned: boolean;
+    createdAt: Timestamp;
+    updatedAt: Timestamp;
+}
+
+export type CreateNoteInput = Partial<Omit<Note, "id" | "ownerId" | "createdAt" | "updatedAt">>;
+export type UpdateNoteInput = Partial<Omit<Note, "id" | "ownerId" | "createdAt">>;
