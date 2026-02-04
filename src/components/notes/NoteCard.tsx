@@ -74,12 +74,12 @@ export default function NoteCard({ note, onDelete, onPin }: NoteCardProps) {
                 paddingTop: '0.75rem'
             }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>
-                    {new Date(note.updatedAt.seconds * 1000).toLocaleDateString(undefined, {
+                    {note.updatedAt ? new Date(note.updatedAt.seconds * 1000).toLocaleDateString(undefined, {
                         month: 'short',
                         day: 'numeric',
                         hour: '2-digit',
                         minute: '2-digit'
-                    })}
+                    }) : 'Just now'}
                 </span>
 
                 <div style={{ display: 'flex', gap: '0.25rem' }}>
