@@ -26,12 +26,12 @@ export function useNoteEditor({ existingNote, initialAccountId }: UseNoteEditorP
     const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
 
     // UI/Async State
-    // UI/Async State
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
     const [noteId, setNoteId] = useState<string | undefined>(existingNote?.id);
     const [isDirty, setIsDirty] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     // Load Accounts
     useEffect(() => {
@@ -90,8 +90,12 @@ export function useNoteEditor({ existingNote, initialAccountId }: UseNoteEditorP
 
     // Persistence Logic
     const save = useCallback(async (shouldExit: boolean = true) => {
-        if (!user || !accountId) return;
+        if (!user || !accountId) {
+            setError("Missing user or account information.");
+            return;
+        }
         setIsSaving(true);
+        setError(null);
 
         try {
             // Determine final content based on current mode
@@ -120,8 +124,9 @@ export function useNoteEditor({ existingNote, initialAccountId }: UseNoteEditorP
             if (shouldExit) {
                 router.back();
             }
-        } catch (error) {
-            console.error("Failed to save note", error);
+        } catch (err: any) {
+            console.error("Failed to save note", err);
+            setError(err.message || "Failed to save note.");
         } finally {
             setIsSaving(false);
         }
@@ -139,16 +144,6 @@ export function useNoteEditor({ existingNote, initialAccountId }: UseNoteEditorP
         return () => clearTimeout(timeoutId);
     }, [title, content, checklistItems, isPinned, accountId, isDirty, user, save]);
 
-    // Mark as dirty on changes
-    useEffect(() => {
-        // We use a separate effect to mark as dirty to avoid cyclic dependencies with the save effect
-        // checking isDirty.
-        // Actually, we can just set isDirty(true) when setters are called, but that requires wrapping setters.
-        // Alternatively, use an effect that watches values and sets isDirty, 
-        // but we need to skip the initial mount.
-        // Let's use a ref to track mount status.
-    }, []);
-
     // Better approach: Wrap Setters or use a dedicated effect that skips first run
     const isFirstRender = useRef(true);
     useEffect(() => {
@@ -164,10 +159,13 @@ export function useNoteEditor({ existingNote, initialAccountId }: UseNoteEditorP
         try {
             await deleteNote(noteId);
             router.back();
-        } catch (error) {
-            console.error("Failed to delete note", error);
+        } catch (err: any) {
+            console.error("Failed to delete note", err);
+            setError(err.message || "Failed to delete note.");
         }
     };
+
+    const dismissError = useCallback(() => setError(null), []);
 
     return {
         metadata: {
@@ -196,7 +194,9 @@ export function useNoteEditor({ existingNote, initialAccountId }: UseNoteEditorP
             isSaving,
             canSave: !isSaving && !!accountId,
             lastSavedAt,
-            isDirty
+            isDirty,
+            error,
+            dismissError
         }
     };
 }

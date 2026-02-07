@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/firebase/auth-context";
-import { getTask, updateTask } from "@/lib/firebase/tasks";
+import { getTask, updateTask, deleteTask } from "@/lib/firebase/tasks";
 import { Task } from "@/types";
 import { X } from "lucide-react";
 import TaskForm from "@/components/tasks/TaskForm";
@@ -57,6 +57,22 @@ function EditTaskContent() {
         }
     };
 
+    const handleDelete = async () => {
+        if (!user || !id || !task) return;
+
+        if (window.confirm(`Are you sure you want to delete "${task.title}"?`)) {
+            setSubmitting(true);
+            try {
+                await deleteTask(id);
+                router.push("/today");
+            } catch (error) {
+                console.error("Error deleting task:", error);
+                alert("Failed to delete task.");
+                setSubmitting(false);
+            }
+        }
+    };
+
 
 
 
@@ -75,6 +91,7 @@ function EditTaskContent() {
                     userId={user.uid}
                     initialData={task}
                     onSubmit={handleSubmit}
+                    onDelete={handleDelete}
                     submitLabel="Save Changes"
                     isSubmitting={submitting}
                 />

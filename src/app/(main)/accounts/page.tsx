@@ -66,12 +66,13 @@ export default function AccountsPage() {
         setIsFormOpen(true);
     };
 
-    const handleDelete = async () => {
-        if (!editingAccount || !user) return;
+    const handleDelete = async (accountOverride?: Account) => {
+        const targetAccount = accountOverride || editingAccount;
+        if (!targetAccount || !user) return;
 
-        if (window.confirm(`Are you sure you want to delete "${editingAccount.name}"? Tasks in this area will not be deleted but will have no area assigned.`)) {
+        if (window.confirm(`Are you sure you want to delete "${targetAccount.name}"? Tasks in this area will not be deleted but will have no area assigned.`)) {
             try {
-                await deleteAccount(editingAccount.id);
+                await deleteAccount(targetAccount.id);
                 resetForm();
             } catch (e) {
                 console.error("Error deleting account:", e);
@@ -165,7 +166,7 @@ export default function AccountsPage() {
                             <Button
                                 type="button"
                                 variant="secondary"
-                                onClick={handleDelete}
+                                onClick={() => handleDelete()}
                                 style={{ marginLeft: 'auto', color: 'var(--red-600, #e74c3c)' }}
                             >
                                 Delete
@@ -187,7 +188,7 @@ export default function AccountsPage() {
                 </div>
             ) : (
                 accounts.map(acc => (
-                    <AccountCard key={acc.id} account={acc} onEdit={handleEdit} />
+                    <AccountCard key={acc.id} account={acc} onEdit={handleEdit} onDelete={handleDelete} />
                 ))
             )}
         </div>

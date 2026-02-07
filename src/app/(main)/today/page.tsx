@@ -2,109 +2,40 @@
 
 import { Reorder } from "framer-motion";
 import { useAuth } from "@/lib/firebase/auth-context";
-import { subscribeToTasks, updateTaskStatus, updateTasksOrder } from "@/lib/firebase/tasks";
-import { subscribeToAccounts } from "@/lib/firebase/accounts";
-import { subscribeToRoutines } from "@/lib/firebase/routines";
 import { Task, Account, Routine } from "@/types";
-import { useEffect, useState, useRef } from "react";
+import { useState } from "react";
 import TaskCard from "@/components/today/TaskCard";
 import DraggableTaskCard from "@/components/today/DraggableTaskCard";
 import Loader from "@/components/ui/Loading";
-import { Check, Repeat, Search } from "lucide-react";
+import { Check, Search } from "lucide-react";
 
 import { useRoutineCompletion } from "@/lib/hooks/use-routine-completion";
+import { useTasks } from "@/lib/hooks/use-tasks";
+import { useRoutines } from "@/lib/hooks/use-routines";
+import { useAccounts } from "@/lib/hooks/use-accounts";
 
 export default function TodayPage() {
     const { user } = useAuth();
-    const [tasks, setTasks] = useState<Task[]>([]);
-    const [routines, setRoutines] = useState<Routine[]>([]);
-    const [accounts, setAccounts] = useState<Account[]>([]);
-    const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
-    const [isReordering, setIsReordering] = useState(false);
 
-    const { isRoutineCompletedToday, toggleCompletion, todayStr } = useRoutineCompletion(user);
+    const {
+        activeTasks,
+        snoozedTasks,
+        finishedTasks,
+        loading: tasksLoading,
+        reorderTasks,
+        changeTaskStatus,
+        taskStatusMap
+    } = useTasks(user, searchQuery);
 
-    const todayDate = new Date();
-    // todayStr is now provided by the hook, but we need todayDate components for filtering
-    const currentDayIdx = todayDate.getDay(); // 0-6
-    const currentMonthDay = todayDate.getDate(); // 1-31
+    const { todaysRoutines, loading: routinesLoading } = useRoutines(user, searchQuery);
+    const { accounts, loading: accountsLoading } = useAccounts(user);
 
-    useEffect(() => {
-        if (user) {
-            const unsubscribeTasks = subscribeToTasks(user.uid, (fetchedTasks) => {
-                // Client-side sort by order then createdAt
-                const sorted = [...fetchedTasks].sort((a, b) => {
-                    const orderA = a.order ?? Number.MAX_SAFE_INTEGER;
-                    const orderB = b.order ?? Number.MAX_SAFE_INTEGER;
-                    if (orderA !== orderB) return orderA - orderB;
-                    // Fallback to createdAt desc (newer first) if no order, or stable sort
-                    return (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0);
-                });
+    const { isRoutineCompletedToday, toggleCompletion } = useRoutineCompletion(user);
 
-                // Only update from snapshot if we are NOT currently reordering locally to prevent jumps
-                if (!isReordering) {
-                    setTasks(sorted);
-                }
-                if (loading) setLoading(false);
-            });
-            const unsubscribeAccounts = subscribeToAccounts(user.uid, (fetchedAccounts) => {
-                setAccounts(fetchedAccounts);
-            });
-            const unsubscribeRoutines = subscribeToRoutines(user.uid, (fetchedRoutines) => {
-                setRoutines(fetchedRoutines);
-            });
+    const isLoading = tasksLoading || routinesLoading || accountsLoading;
 
-            return () => {
-                unsubscribeTasks();
-                unsubscribeAccounts();
-                unsubscribeRoutines();
-            };
-        }
-    }, [user, loading, isReordering]);
-
-    // Redundant effect removed
-
-
-    const handleStatusChange = async (taskId: string, status: Task['status']) => {
-        if (user) {
-            await updateTaskStatus(taskId, status, user.uid);
-        }
-    };
-
-    // Filter logic
-    const filterItem = (text: string) => text.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const activeTasks = tasks.filter(t => t.status !== 'done' && t.status !== 'waiting' && (filterItem(t.title) || (t.description && filterItem(t.description))));
-    const snoozedTasks = tasks.filter(t => t.status === 'waiting' && (filterItem(t.title) || (t.description && filterItem(t.description))));
-    const finishedTasks = tasks.filter(t => t.status === 'done' && (filterItem(t.title) || (t.description && filterItem(t.description))));
-
-    // Filter Routines for Today
-    const todaysRoutines = routines.filter(r => {
-        // Search filter
-        if (!filterItem(r.title)) return false;
-
-        // Monthly
-        if (r.schedule === 'monthly') {
-            return r.monthDay === currentMonthDay;
-        }
-        // Specific Days
-        if (r.days && r.days.length > 0) {
-            return r.days.includes(currentDayIdx);
-        }
-        // Legacy/Default Daily
-        if (r.schedule === 'daily' || !r.schedule) return true;
-
-        // Legacy Weekly (deprecated but handle safe) - maybe show on Mondays? 
-        // Or just hide? Let's hide weekly legacy if no days array to avoid confusion, 
-        // or assume Monday. Safe bet: if no days array and weekly, hide or show all? 
-        // Let's assume daily if fallback.
-        return true;
-    });
-
-    const taskStatusMap = new Map(tasks.map(t => [t.id, t.status]));
-
-    if (loading) {
+    if (isLoading) {
         return <Loader fullScreen={false} className="py-8" />;
     }
 
@@ -209,63 +140,7 @@ export default function TodayPage() {
                     <Reorder.Group
                         axis="y"
                         values={activeTasks}
-                        onReorder={(newOrder) => {
-                            // Optimistically update local state
-                            setIsReordering(true);
-
-                            // We need to merge the new order of activeTasks into the full tasks list
-                            // Create a map of ids to their new desired index in the active list
-                            const activeIdSet = new Set(newOrder.map(t => t.id));
-
-                            // Reconstruct tasks: 
-                            // 1. Keep non-active tasks where they are (or filter them out and append? No, keep relative order)
-                            // 2. Replace the sequence of active tasks with the new sequence?
-                            // Easier: Just update the `tasks` array by replacing the items that are in activeTasks with the new order items
-                            // But wait, the `tasks` array contains ALL tasks.
-                            // If we just swap the objects in `tasks`, we need to find their indices.
-
-                            // Strategy: Filter out active tasks from `tasks`, then splice them back in? 
-                            // OR simply: `setTasks` with a new array where we look up the active tasks from `newOrder` if they exist there.
-
-                            // Let's create a new full list
-                            const newTasks = [...tasks];
-                            // Sort relevant items in newTasks to match newOrder?
-                            // Actually, simply updating the `order` property on the items is enough if we resort?
-                            // But for smooth UI, we want to update the array order immediately.
-
-                            // Let's map ids to 0..N based on newOrder
-                            const orderMap = new Map(newOrder.map((t, i) => [t.id, i]));
-
-                            const reorderedActive = newOrder.map((t, i) => ({ ...t, order: i }));
-
-                            // Update the main tasks state
-                            const updatedTasks = tasks.map(t => {
-                                if (orderMap.has(t.id)) {
-                                    return { ...t, order: orderMap.get(t.id) };
-                                }
-                                return t;
-                            }).sort((a, b) => {
-                                // Same sort logic as useEffect
-                                const orderA = a.order ?? Number.MAX_SAFE_INTEGER;
-                                const orderB = b.order ?? Number.MAX_SAFE_INTEGER;
-                                if (orderA !== orderB) return orderA - orderB;
-                                return (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0);
-                            });
-
-                            setTasks(updatedTasks);
-
-                            // Save to DB (debounced handled by caller or just trigger?)
-                            // For now fire and forget, but ideally debounce.
-                            // Since `onReorder` can fire rapidly, valid concern. 
-                            // But usually onReorder fires once per swap or continuously? 
-                            // Framer Motion Reorder fires on every frame? No, on change of order.
-                            // Let's just save.
-                            updateTasksOrder(reorderedActive.map(t => ({ id: t.id, order: t.order! })))
-                                .catch(console.error)
-                                .finally(() => {
-                                    setTimeout(() => setIsReordering(false), 1000); // cooldown
-                                });
-                        }}
+                        onReorder={reorderTasks}
                         style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', listStyle: 'none', padding: 0 }}
                     >
                         {activeTasks.map(task => {
@@ -280,7 +155,7 @@ export default function TodayPage() {
                                     key={task.id}
                                     task={task}
                                     areaColor={task.accountId ? accounts.find(a => a.id === task.accountId)?.color : undefined}
-                                    onStatusChange={(status) => handleStatusChange(task.id, status)}
+                                    onStatusChange={(status) => changeTaskStatus(task.id, status)}
                                     isBlocked={isBlocked}
                                 />
                             );
@@ -299,7 +174,7 @@ export default function TodayPage() {
                             key={task.id}
                             task={task}
                             areaColor={task.accountId ? accounts.find(a => a.id === task.accountId)?.color : undefined}
-                            onStatusChange={(status) => handleStatusChange(task.id, status)}
+                            onStatusChange={(status) => changeTaskStatus(task.id, status)}
                         />
                     ))}
                 </section>
@@ -315,7 +190,7 @@ export default function TodayPage() {
                             key={task.id}
                             task={task}
                             areaColor={task.accountId ? accounts.find(a => a.id === task.accountId)?.color : undefined}
-                            onStatusChange={(status) => handleStatusChange(task.id, status)}
+                            onStatusChange={(status) => changeTaskStatus(task.id, status)}
                         />
                     ))}
                 </section>

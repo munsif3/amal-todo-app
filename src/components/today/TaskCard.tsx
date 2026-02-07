@@ -77,7 +77,6 @@ export default function TaskCard({ task, onStatusChange, areaColor, isBlocked = 
                 whileTap={{ cursor: isBlocked ? 'not-allowed' : 'grabbing' }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
-                {/* Drag Handle */}
                 <div
                     className="drag-handle"
                     onPointerDown={(e) => dragControls?.start(e)}
@@ -86,9 +85,10 @@ export default function TaskCard({ task, onStatusChange, areaColor, isBlocked = 
                         alignItems: 'center',
                         justifyContent: 'center',
                         cursor: 'grab',
-                        padding: '0.5rem',
+                        padding: '0.25rem',
                         opacity: 0.3,
-                        marginRight: '0.5rem',
+                        marginLeft: '-0.5rem',
+                        marginRight: '-0.75rem',
                         touchAction: 'none'
                     }}
                 >
@@ -170,22 +170,24 @@ export default function TaskCard({ task, onStatusChange, areaColor, isBlocked = 
                     )}
                 </div>
 
-                {task.status === 'done' ? (
-                    <button
-                        onClick={() => onStatusChange('next')}
-                        style={{
-                            fontSize: '0.75rem',
-                            color: 'var(--status-done)',
-                            fontWeight: '500'
-                        }}
-                    >
-                        Undo
-                    </button>
-                ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {task.status === 'done' && (
+                        <button
+                            onClick={() => onStatusChange('next')}
+                            style={{
+                                fontSize: '0.75rem',
+                                color: 'var(--status-done)',
+                                fontWeight: '500',
+                                marginRight: '0.5rem'
+                            }}
+                        >
+                            Undo
+                        </button>
+                    )}
                     <Link href={`/tasks/edit?id=${task.id}`} style={{ opacity: 0.3 }}>
                         <Pencil size={16} />
                     </Link>
-                )}
+                </div>
             </motion.div>
         </div>
     );

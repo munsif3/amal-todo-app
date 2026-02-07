@@ -1,7 +1,7 @@
 "use client";
 
 import { Account } from "@/types";
-import { ChevronRight, Pencil } from "lucide-react";
+import { ChevronRight, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 import { DEFAULT_ACCOUNT_COLOR } from "@/lib/constants";
@@ -9,9 +9,10 @@ import { DEFAULT_ACCOUNT_COLOR } from "@/lib/constants";
 interface AccountCardProps {
     account: Account;
     onEdit: (account: Account) => void;
+    onDelete?: (account: Account) => void;
 }
 
-export default function AccountCard({ account, onEdit }: AccountCardProps) {
+export default function AccountCard({ account, onEdit, onDelete }: AccountCardProps) {
     return (
         <Link href={`/account?id=${account.id}`} style={{
             display: 'flex',
@@ -32,16 +33,46 @@ export default function AccountCard({ account, onEdit }: AccountCardProps) {
                 )}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <button
                     onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         onEdit(account);
                     }}
-                    style={{ opacity: 0.3, cursor: 'pointer', border: 'none', background: 'none' }}
+                    style={{
+                        padding: '0.5rem',
+                        opacity: 0.5,
+                        cursor: 'pointer',
+                        border: 'none',
+                        background: 'none',
+                        color: 'var(--foreground)',
+                        borderRadius: '4px',
+                        transition: 'all 0.2s',
+                    }}
+                    title="Edit Area"
                 >
-                    <Pencil size={16} />
+                    <Pencil size={18} />
+                </button>
+                <button
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (onDelete) onDelete(account);
+                    }}
+                    style={{
+                        padding: '0.5rem',
+                        opacity: 0.5,
+                        cursor: 'pointer',
+                        border: 'none',
+                        background: 'none',
+                        color: 'var(--red-500, #ef4444)',
+                        borderRadius: '4px',
+                        transition: 'all 0.2s',
+                    }}
+                    title="Delete Area"
+                >
+                    <Trash2 size={18} />
                 </button>
                 <ChevronRight size={20} style={{ opacity: 0.3 }} />
             </div>

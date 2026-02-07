@@ -14,11 +14,12 @@ interface TaskFormProps {
     userId: string;
     initialData?: Partial<Task>;
     onSubmit: (data: Partial<Task>) => Promise<void>;
+    onDelete?: () => void;
     submitLabel?: string;
     isSubmitting?: boolean;
 }
 
-export default function TaskForm({ userId, initialData, onSubmit, submitLabel = "Save", isSubmitting = false }: TaskFormProps) {
+export default function TaskForm({ userId, initialData, onSubmit, onDelete, submitLabel = "Save", isSubmitting = false }: TaskFormProps) {
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [title, setTitle] = useState(initialData?.title || "");
@@ -164,9 +165,22 @@ export default function TaskForm({ userId, initialData, onSubmit, submitLabel = 
                 </div>
             </div>
 
-            <Button type="submit" disabled={isSubmitting || !title} isLoading={isSubmitting}>
-                {submitLabel}
-            </Button>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <Button type="submit" disabled={isSubmitting || !title} isLoading={isSubmitting}>
+                    {submitLabel}
+                </Button>
+                {onDelete && (
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={onDelete}
+                        style={{ marginLeft: 'auto', color: 'var(--red-600, #e74c3c)' }}
+                        disabled={isSubmitting}
+                    >
+                        Delete
+                    </Button>
+                )}
+            </div>
         </form>
     );
 }

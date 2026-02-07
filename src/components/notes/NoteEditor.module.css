@@ -1,0 +1,185 @@
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+.contentStack {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Toolbar */
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.backButton {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--muted-foreground);
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.deleteButton {
+    padding: 0.5rem;
+    color: var(--destructive);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+}
+
+.saveButton {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: var(--primary);
+    color: white;
+    border-radius: var(--radius);
+    border: none;
+    cursor: pointer;
+}
+
+.saveButton:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Metadata */
+.titleInput {
+    font-size: 1.5rem;
+    font-weight: 700;
+    border: none;
+    outline: none;
+    background: transparent;
+    width: 100%;
+}
+
+.controlsRow {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.select {
+    padding: 0.5rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background-color: var(--background);
+}
+
+.checkboxLabel {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.modeToggleGroup {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+.modeButton {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    opacity: 0.5;
+}
+
+.modeButtonActive {
+    background-color: rgba(0,0,0,0.05);
+    opacity: 1;
+}
+
+/* Text Editor */
+.textArea {
+    min-height: 400px;
+    padding: 1rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    resize: vertical;
+    font-family: monospace;
+    font-size: 1rem;
+    line-height: 1.6;
+    background-color: var(--card);
+    width: 100%;
+}
+
+/* Checklist */
+.checklistContainer {
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.checklistItem {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.dragHandle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    padding: 0.25rem;
+    opacity: 0.3;
+    margin-right: -0.5rem;
+    touch-action: none;
+}
+
+.checklistInput {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 1rem;
+    outline: none;
+}
+
+.checklistInputChecked {
+    color: var(--muted-foreground);
+    text-decoration: line-through;
+}
+
+.deleteItemButton {
+    color: var(--muted-foreground);
+    opacity: 0.5;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.addItemForm {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+    opacity: 0.7;
+}
+
+.addItemInput {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 1rem;
+    outline: none;
+}

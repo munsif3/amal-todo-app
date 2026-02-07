@@ -6,19 +6,27 @@ interface AreaSelectorProps {
     selectedAccountId: string;
     onSelect: (accountId: string) => void;
     label?: string;
+    showLabel?: boolean;
+    className?: string;
+    style?: React.CSSProperties;
 }
 
 export default function AreaSelector({
     accounts,
     selectedAccountId,
     onSelect,
-    label = "Area"
+    label = "Area",
+    showLabel = true,
+    className,
+    style
 }: AreaSelectorProps) {
     return (
-        <div style={{ marginBottom: '2rem' }}>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem', opacity: 0.7 }}>
-                {label}
-            </label>
+        <div className={className} style={{ marginBottom: className ? 0 : '2rem', ...style }}>
+            {showLabel && (
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem', opacity: 0.7 }}>
+                    {label}
+                </label>
+            )}
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 {accounts.map(acc => {
                     const isSelected = selectedAccountId === acc.id;
