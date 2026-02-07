@@ -7,6 +7,7 @@ import { ArrowLeft, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
+import Loader from "@/components/ui/Loading";
 
 import AreaSelector from "@/components/ui/AreaSelector";
 
@@ -111,7 +112,10 @@ function RoutineDetailContent() {
         router.push("/routines");
     };
 
-    if (loading) return <div style={{ padding: '2rem' }}>Loading...</div>;
+
+
+
+    if (loading) return <Loader fullScreen={false} className="py-8" />;
 
     return (
         <div style={{ paddingBottom: '80px', maxWidth: '600px', margin: '0 auto' }}>
@@ -278,7 +282,7 @@ function RoutineDetailContent() {
 
 export default function RoutineDetailPage() {
     return (
-        <Suspense fallback={<div>Loading editor...</div>}>
+        <Suspense fallback={<Loader fullScreen={false} className="py-8" />}>
             <RoutineDetailContent />
         </Suspense>
     );

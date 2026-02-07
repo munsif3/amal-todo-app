@@ -7,6 +7,7 @@ import { getTask, updateTask } from "@/lib/firebase/tasks";
 import { Task } from "@/types";
 import { X } from "lucide-react";
 import TaskForm from "@/components/tasks/TaskForm";
+import Loader from "@/components/ui/Loading";
 
 function EditTaskContent() {
     const searchParams = useSearchParams();
@@ -56,7 +57,10 @@ function EditTaskContent() {
         }
     };
 
-    if (loading) return <div style={{ paddingTop: '2rem', opacity: 0.5 }}>Loading...</div>;
+
+
+
+    if (loading) return <Loader fullScreen={false} className="py-8" />;
     if (!task) return null;
 
     return (
@@ -81,7 +85,7 @@ function EditTaskContent() {
 
 export default function EditTaskPage() {
     return (
-        <Suspense fallback={<div style={{ paddingTop: '2rem', opacity: 0.5 }}>Loading...</div>}>
+        <Suspense fallback={<Loader fullScreen={false} className="py-8" />}>
             <EditTaskContent />
         </Suspense>
     );

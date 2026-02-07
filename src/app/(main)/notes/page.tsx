@@ -8,6 +8,7 @@ import NoteList from "@/components/notes/NoteList";
 import { Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import Loader from "@/components/ui/Loading";
 
 export default function NotesPage() {
     const { user } = useAuth();
@@ -29,7 +30,10 @@ export default function NotesPage() {
         note.content.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    if (loading) return <div style={{ opacity: 0.5, padding: '2rem 0' }}>Loading library...</div>;
+
+
+
+    if (loading) return <Loader fullScreen={false} className="py-8" />;
 
     return (
         <div>

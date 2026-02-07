@@ -8,6 +8,7 @@ import { Input, Button } from "@/components/ui/Form";
 import AccountCard from "@/components/accounts/AccountCard";
 import { Plus } from "lucide-react";
 import { PRESET_COLORS, DEFAULT_ACCOUNT_COLOR } from "@/lib/constants";
+import Loader from "@/components/ui/Loading";
 
 export default function AccountsPage() {
     const { user } = useAuth();
@@ -87,7 +88,10 @@ export default function AccountsPage() {
         }
     };
 
-    if (loading) return <div style={{ opacity: 0.5, padding: '2rem 0' }}>Loading accounts...</div>;
+
+
+
+    if (loading) return <Loader fullScreen={false} className="py-8" />;
 
     return (
         <div>

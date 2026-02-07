@@ -1,0 +1,108 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background with Gradient (Deep Navy/Teal to Lighter Teal) -->
+  <rect width="512" height="512" rx="112" fill="url(#bg_gradient)"/>
+  
+  <!-- Arrow Shape Group -->
+  <g filter="url(#dropShadow)">
+  
+    <!-- Left Wing (Cyan/Teal) -->
+    <!-- Points: [Tip] -> [Center Fold] -> [Tail Left] -->
+    <path d="M380 120 L 250 250 L 130 380 L 380 120" fill="url(#left_wing_gradient)" />
+    
+    <!-- Right Wing (Dark/Deep Blue) -->
+    <!-- Points: [Tip] -> [Center Fold] -> [Tail Right] -->
+    <!-- The tail of this wing meets the 'tail left' or slightly off? In the ref image, it looks like a separate fold. -->
+    <path d="M380 120 L 250 250 L 310 380 L 380 120" fill="url(#right_wing_gradient)" />
+
+    <!-- Center Fold (Orange Triangle) -->
+    <!-- Points: [Center Deep Fold] -> [Connecting to Left Wing] -> [Connecting to Right Wing] -->
+    <path d="M250 250 L 310 380 L 210 210" fill="#D95C26" /> 
+    <!-- Wait, let me re-evaluate the geometry based on the "paper airplane" look. -->
+    <!-- Usually it's: Tip is top-right. Tail is bottom-left. -->
+    
+    <!-- Redoing geometry to match the "origami dart" style more accurately -->
+    
+    <!-- Main Left Part (Cyan) -->
+    <path d="M390 120 L 220 220 L 120 390 L 390 120" fill="url(#left_wing_gradient)"/>
+    
+    <!-- Lower Right Part (Dark Blue) -->
+    <path d="M390 120 L 220 220 L 320 360 L 390 120" fill="url(#right_wing_gradient)"/>
+
+    <!-- Inner Triangle (Orange/Red) -->
+    <!-- The space between the two tail points? No, usually it's a fold. -->
+    <!-- Looking at the image again:
+         There's a central orange triangle pointing up-left.
+         Its vertices seem to be:
+         1. The intersection point in the middle (approx 220, 220)
+         2. A point on the left wing edge?
+         3. A point on the right wing edge?
+    -->
+    
+    <!-- Let's try a different segmentation based on typical logo construction -->
+    <!-- The orange part is the "underside" revealed by the fold. -->
+    <path d="M220 220 L 320 360 L 120 390 L 220 220" fill="#C45A31"/> <!-- This would cover the whole tail? No. -->
+
+  </g>
+  
+  <!-- Let's try a simpler construction that visually matches -->
+  <!-- 1. Left Big Triangle (Cyan) -->
+  <path d="M382 122 L 210 240 L 122 382 Z" fill="url(#cyan_grad)" filter="url(#shadow)"/>
+  
+  <!-- 2. Right Big Triangle (Dark Blue) -->
+  <path d="M382 122 L 260 270 L 330 360 Z" fill="url(#blue_grad)" filter="url(#shadow)"/>
+  
+  <!-- 3. Center/Bottom Triangle (Orange) -->
+  <path d="M210 240 L 260 270 L 235 320 Z" fill="url(#orange_grad)"/>
+  
+  <!-- Re-attempting precise geometry match -->
+  <!-- Tip at Top-Right (400, 112) -->
+  <!-- Left Wing moves Left and Down -->
+  <!-- Right Wing moves Down -->
+  
+  <!-- Improved Coordinates -->
+  <g transform="translate(16, 16)"> <!-- Centering adjustment -->
+      
+      <!-- Folded Orange Section (Back Layer) -->
+      <path d="M 220 220 L 320 320 L 220 350 Z" fill="#D65A31"/>
+
+      <!-- Main Arrow Body (Cyan/Teal) - The top face -->
+      <path d="M 380 100 L 220 220 L 130 380 L 380 100" fill="url(#cyan_grad)"/>
+      
+      <!-- Right Wing/Fold (Dark Blue) - The side face -->
+      <path d="M 380 100 L 220 220 L 320 320 L 380 100" fill="url(#blue_grad)"/>
+      
+      <!-- Orange Triangle (The 'pocket' or underside) -->
+      <path d="M 220 220 L 250 280 L 320 320 Z" fill="url(#orange_grad)"/>
+      
+  </g>
+
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="bg_gradient" x1="0" y1="512" x2="512" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F2027"/>
+      <stop offset="1" stop-color="#2C5364"/>
+    </linearGradient>
+
+    <linearGradient id="cyan_grad" x1="130" y1="380" x2="380" y2="100" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1CB5E0"/>
+      <stop offset="1" stop-color="#000046"/>
+    </linearGradient>
+
+    <linearGradient id="blue_grad" x1="320" y1="320" x2="380" y2="100" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#000428"/>
+      <stop offset="1" stop-color="#004e92"/>
+    </linearGradient>
+
+    <linearGradient id="orange_grad" x1="220" y1="220" x2="320" y2="320" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF512F"/>
+      <stop offset="1" stop-color="#DD2476"/>
+    </linearGradient>
+
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="2" dy="4" stdDeviation="4" flood-opacity="0.3"/>
+    </filter>
+     <filter id="dropShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="black" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+</svg>

@@ -7,6 +7,7 @@ import { Routine, Account } from "@/types";
 import { Plus, Check, MoreVertical } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import Loader from "@/components/ui/Loading";
 
 import { useRoutineCompletion } from "@/lib/hooks/use-routine-completion";
 
@@ -92,8 +93,11 @@ export default function RoutinesPage() {
                 </Link>
             </header>
 
+
+
+
             {loading ? (
-                <p>Loading routines...</p>
+                <Loader fullScreen={false} className="py-8" />
             ) : routines.length === 0 ? (
                 <div style={{
                     textAlign: 'center',

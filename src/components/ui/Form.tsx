@@ -46,9 +46,10 @@ export const Textarea = ({ label, ...props }: { label?: string } & React.Textare
     </div>
 );
 
-export const Button = ({ children, variant = 'primary', ...props }: { children: React.ReactNode, variant?: 'primary' | 'secondary' } & React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+export const Button = ({ children, variant = 'primary', isLoading = false, ...props }: { children: React.ReactNode, variant?: 'primary' | 'secondary', isLoading?: boolean } & React.ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button
         {...props}
+        disabled={props.disabled || isLoading}
         style={{
             width: '100%',
             padding: '1rem',
@@ -59,11 +60,32 @@ export const Button = ({ children, variant = 'primary', ...props }: { children: 
             backgroundColor: variant === 'primary' ? 'var(--primary)' : 'transparent',
             color: variant === 'primary' ? 'white' : 'var(--primary)',
             border: variant === 'secondary' ? '1px solid var(--primary)' : 'none',
-            cursor: props.disabled ? 'not-allowed' : 'pointer',
-            opacity: props.disabled ? 0.5 : 1,
+            cursor: (props.disabled || isLoading) ? 'not-allowed' : 'pointer',
+            opacity: (props.disabled || isLoading) ? 0.5 : 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem',
             ...props.style
         }}
     >
+        {isLoading && (
+            <div style={{
+                width: '16px',
+                height: '16px',
+                border: '2px solid currentColor',
+                borderRightColor: 'transparent',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite'
+            }} />
+        )}
         {children}
+        <style dangerouslySetInnerHTML={{
+            __html: `
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+        `}} />
     </button>
 );

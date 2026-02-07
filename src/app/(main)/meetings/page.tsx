@@ -6,6 +6,7 @@ import { Meeting } from "@/types";
 import { Plus, Calendar, Clock } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import Loader from "@/components/ui/Loading";
 
 export default function MeetingsPage() {
     const { user } = useAuth();
@@ -46,8 +47,11 @@ export default function MeetingsPage() {
                 </Link>
             </header>
 
+
+
+
             {loading ? (
-                <p>Loading meetings...</p>
+                <Loader fullScreen={false} className="py-8" />
             ) : meetings.length === 0 ? (
                 <div style={{
                     textAlign: 'center',

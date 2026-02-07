@@ -7,6 +7,7 @@ import { subscribeToRoutines } from "@/lib/firebase/routines";
 import { Task, Account, Routine } from "@/types";
 import { useEffect, useState } from "react";
 import TaskCard from "@/components/today/TaskCard";
+import Loader from "@/components/ui/Loading";
 import { Check, Repeat, Search } from "lucide-react";
 
 import { useRoutineCompletion } from "@/lib/hooks/use-routine-completion";
@@ -72,7 +73,8 @@ export default function TodayPage() {
     // Filter logic
     const filterItem = (text: string) => text.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const activeTasks = tasks.filter(t => t.status !== 'done' && (filterItem(t.title) || (t.description && filterItem(t.description))));
+    const activeTasks = tasks.filter(t => t.status !== 'done' && t.status !== 'waiting' && (filterItem(t.title) || (t.description && filterItem(t.description))));
+    const snoozedTasks = tasks.filter(t => t.status === 'waiting' && (filterItem(t.title) || (t.description && filterItem(t.description))));
     const finishedTasks = tasks.filter(t => t.status === 'done' && (filterItem(t.title) || (t.description && filterItem(t.description))));
 
     // Filter Routines for Today
@@ -101,7 +103,7 @@ export default function TodayPage() {
     const taskStatusMap = new Map(tasks.map(t => [t.id, t.status]));
 
     if (loading) {
-        return <div style={{ opacity: 0.5, padding: '2rem 0' }}>Loading your day...</div>;
+        return <Loader fullScreen={false} className="py-8" />;
     }
 
     return (
@@ -222,6 +224,22 @@ export default function TodayPage() {
                     })
                 )}
             </section>
+
+            {snoozedTasks.length > 0 && (
+                <section style={{ marginBottom: '2.5rem', opacity: 0.8 }}>
+                    <h2 style={{ fontSize: '0.875rem', color: 'var(--foreground)', opacity: 0.4, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1rem' }}>
+                        Snoozed / Later
+                    </h2>
+                    {snoozedTasks.map(task => (
+                        <TaskCard
+                            key={task.id}
+                            task={task}
+                            areaColor={task.accountId ? accounts.find(a => a.id === task.accountId)?.color : undefined}
+                            onStatusChange={(status) => handleStatusChange(task.id, status)}
+                        />
+                    ))}
+                </section>
+            )}
 
             {finishedTasks.length > 0 && (
                 <section style={{ opacity: 0.6 }}>

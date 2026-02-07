@@ -164,8 +164,8 @@ export default function TaskForm({ userId, initialData, onSubmit, submitLabel = 
                 </div>
             </div>
 
-            <Button type="submit" disabled={isSubmitting || !title}>
-                {isSubmitting ? "Saving..." : submitLabel}
+            <Button type="submit" disabled={isSubmitting || !title} isLoading={isSubmitting}>
+                {submitLabel}
             </Button>
         </form>
     );
