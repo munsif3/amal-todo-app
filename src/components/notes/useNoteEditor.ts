@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Note, Account } from "@/types";
 import { useAuth } from "@/lib/firebase/auth-context";
@@ -26,8 +26,12 @@ export function useNoteEditor({ existingNote, initialAccountId }: UseNoteEditorP
     const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
 
     // UI/Async State
+    // UI/Async State
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [isSaving, setIsSaving] = useState(false);
+    const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+    const [noteId, setNoteId] = useState<string | undefined>(existingNote?.id);
+    const [isDirty, setIsDirty] = useState(false);
 
     // Load Accounts
     useEffect(() => {
@@ -85,14 +89,12 @@ export function useNoteEditor({ existingNote, initialAccountId }: UseNoteEditorP
     }, []);
 
     // Persistence Logic
-    const save = async () => {
+    const save = useCallback(async (shouldExit: boolean = true) => {
         if (!user || !accountId) return;
         setIsSaving(true);
 
         try {
             // Determine final content based on current mode
-            // If in checklist mode, we must serialize the *current* items
-            // If in text mode, 'content' state is the source of truth
             const finalContent = mode === 'checklist'
                 ? serializeChecklist(checklistItems)
                 : content;
@@ -105,23 +107,62 @@ export function useNoteEditor({ existingNote, initialAccountId }: UseNoteEditorP
                 type: mode
             };
 
-            if (existingNote) {
-                await updateNote(existingNote.id, noteData);
+            if (noteId) {
+                await updateNote(noteId, noteData);
             } else {
-                await createNote(user.uid, noteData);
+                const newNoteRef = await createNote(user.uid, noteData);
+                setNoteId(newNoteRef.id);
             }
-            router.back();
+
+            setLastSavedAt(new Date());
+            setIsDirty(false);
+
+            if (shouldExit) {
+                router.back();
+            }
         } catch (error) {
             console.error("Failed to save note", error);
         } finally {
             setIsSaving(false);
         }
-    };
+    }, [user, accountId, mode, checklistItems, content, title, isPinned, noteId, router]);
+
+    // Auto-save Effect
+    useEffect(() => {
+        // Skip auto-save if not dirty or essential data missing
+        if (!isDirty || !user || !accountId) return;
+
+        const timeoutId = setTimeout(() => {
+            save(false);
+        }, 2000); // 2 second debounce
+
+        return () => clearTimeout(timeoutId);
+    }, [title, content, checklistItems, isPinned, accountId, isDirty, user, save]);
+
+    // Mark as dirty on changes
+    useEffect(() => {
+        // We use a separate effect to mark as dirty to avoid cyclic dependencies with the save effect
+        // checking isDirty.
+        // Actually, we can just set isDirty(true) when setters are called, but that requires wrapping setters.
+        // Alternatively, use an effect that watches values and sets isDirty, 
+        // but we need to skip the initial mount.
+        // Let's use a ref to track mount status.
+    }, []);
+
+    // Better approach: Wrap Setters or use a dedicated effect that skips first run
+    const isFirstRender = useRef(true);
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
+        setIsDirty(true);
+    }, [title, content, checklistItems, isPinned, accountId, mode]);
 
     const remove = async () => {
-        if (!existingNote || !confirm("Are you sure you want to delete this note?")) return;
+        if (!noteId || !confirm("Are you sure you want to delete this note?")) return;
         try {
-            await deleteNote(existingNote.id);
+            await deleteNote(noteId);
             router.back();
         } catch (error) {
             console.error("Failed to delete note", error);
@@ -149,10 +190,12 @@ export function useNoteEditor({ existingNote, initialAccountId }: UseNoteEditorP
             deleteItem: deleteChecklistItem
         },
         actions: {
-            save,
+            save: () => save(true),
             remove,
             isSaving,
-            canSave: !isSaving && !!accountId
+            canSave: !isSaving && !!accountId,
+            lastSavedAt,
+            isDirty
         }
     };
 }

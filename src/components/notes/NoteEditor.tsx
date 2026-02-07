@@ -103,7 +103,10 @@ function NoteToolbar({
                 Back
             </button>
 
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>
+                    {isSaving ? 'Saving...' : 'Saved'}
+                </div>
                 {onDelete && (
                     <button onClick={onDelete} style={styles.deleteButton}>
                         <Trash2 size={20} />
@@ -119,7 +122,7 @@ function NoteToolbar({
                     }}
                 >
                     <Save size={18} />
-                    {isSaving ? 'Saving...' : 'Save'}
+                    Save
                 </button>
             </div>
         </div>
