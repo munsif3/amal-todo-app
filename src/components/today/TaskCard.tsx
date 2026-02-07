@@ -77,7 +77,6 @@ export default function TaskCard({ task, onStatusChange, areaColor, isBlocked = 
                 whileTap={{ cursor: isBlocked ? 'not-allowed' : 'grabbing' }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
-                {/* Drag Handle */}
                 <div
                     className="drag-handle"
                     onPointerDown={(e) => dragControls?.start(e)}
@@ -86,9 +85,10 @@ export default function TaskCard({ task, onStatusChange, areaColor, isBlocked = 
                         alignItems: 'center',
                         justifyContent: 'center',
                         cursor: 'grab',
-                        padding: '0.5rem',
+                        padding: '0.25rem',
                         opacity: 0.3,
-                        marginRight: '0.5rem',
+                        marginLeft: '-0.5rem',
+                        marginRight: '-0.75rem',
                         touchAction: 'none'
                     }}
                 >

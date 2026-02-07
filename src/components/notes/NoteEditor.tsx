@@ -295,9 +295,9 @@ function DraggableChecklistItem({ item, onToggle, onUpdate, onDelete }: {
                         alignItems: 'center',
                         justifyContent: 'center',
                         cursor: 'grab',
-                        padding: '0.35rem',
+                        padding: '0.25rem',
                         opacity: 0.3,
-                        marginRight: '0.25rem',
+                        marginRight: '-0.5rem',
                         touchAction: 'none'
                     }}
                 >
