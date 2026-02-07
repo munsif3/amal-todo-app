@@ -11,7 +11,8 @@ import {
     orderBy,
     Timestamp,
     serverTimestamp,
-    arrayUnion
+    arrayUnion,
+    writeBatch
 } from "firebase/firestore";
 import { db } from "./client";
 import { Task, TaskStatus, CreateTaskInput, UpdateTaskInput } from "@/types";
@@ -71,11 +72,21 @@ export async function createTask(userId: string, taskData: CreateTaskInput) {
                 userId: userId,
             }
         ],
+        order: taskData.order !== undefined ? taskData.order : Date.now(),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
     };
 
     return addDoc(collection(db, TASKS_COLLECTION), newTask);
+}
+
+export async function updateTasksOrder(updates: { id: string; order: number }[]) {
+    const batch = writeBatch(db);
+    updates.forEach(({ id, order }) => {
+        const ref = doc(db, TASKS_COLLECTION, id);
+        batch.update(ref, { order, updatedAt: serverTimestamp() });
+    });
+    return batch.commit();
 }
 
 export async function updateTask(taskId: string, data: UpdateTaskInput) {

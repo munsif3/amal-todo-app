@@ -187,7 +187,8 @@ export function useNoteEditor({ existingNote, initialAccountId }: UseNoteEditorP
             addItem: addChecklistItem,
             updateItem: updateChecklistItem,
             toggleItem: toggleChecklistItem,
-            deleteItem: deleteChecklistItem
+            deleteItem: deleteChecklistItem,
+            reorderItems: (newItems: ChecklistItem[]) => setChecklistItems(newItems)
         },
         actions: {
             save: () => save(true),

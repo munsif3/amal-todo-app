@@ -1,7 +1,7 @@
 "use client";
 
 import { Task } from "@/types";
-import { Check, Clock, Pencil, Calendar } from "lucide-react";
+import { Check, Clock, Pencil, Calendar, GripVertical } from "lucide-react";
 import { motion, useMotionValue, useTransform } from "framer-motion";
 import Link from "next/link";
 
@@ -12,9 +12,10 @@ interface TaskCardProps {
     onStatusChange: (status: Task['status']) => void;
     areaColor?: string;
     isBlocked?: boolean;
+    dragControls?: any; // strict typing would be DragControls from framer-motion
 }
 
-export default function TaskCard({ task, onStatusChange, areaColor, isBlocked = false }: TaskCardProps) {
+export default function TaskCard({ task, onStatusChange, areaColor, isBlocked = false, dragControls }: TaskCardProps) {
     const x = useMotionValue(0);
 
     // Transform x position to colors for swipe actions
@@ -76,6 +77,24 @@ export default function TaskCard({ task, onStatusChange, areaColor, isBlocked = 
                 whileTap={{ cursor: isBlocked ? 'not-allowed' : 'grabbing' }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
+                {/* Drag Handle */}
+                <div
+                    className="drag-handle"
+                    onPointerDown={(e) => dragControls?.start(e)}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'grab',
+                        padding: '0.5rem',
+                        opacity: 0.3,
+                        marginRight: '0.5rem',
+                        touchAction: 'none'
+                    }}
+                >
+                    <GripVertical size={16} />
+                </div>
+
                 {/* Tick Button */}
                 <button
                     onClick={(e) => {

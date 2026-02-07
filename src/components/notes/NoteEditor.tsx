@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, Save, Trash2, ListChecks, FileText, Plus, X } from "lucide-react";
+import { Reorder, useDragControls } from "framer-motion";
+import { ArrowLeft, Save, Trash2, ListChecks, FileText, Plus, X, GripVertical } from "lucide-react";
 import { Note } from "@/types";
 import { useNoteEditor } from "./useNoteEditor";
 import { ChecklistItem } from "./note-utils";
@@ -61,6 +62,7 @@ export default function NoteEditor(props: NoteEditorProps) {
                         onUpdate={checklistState.updateItem}
                         onDelete={checklistState.deleteItem}
                         onAdd={checklistState.addItem}
+                        onReorder={checklistState.reorderItems}
                     />
                 )}
             </div>
@@ -223,13 +225,15 @@ function ChecklistEditor({
     onToggle,
     onUpdate,
     onDelete,
-    onAdd
+    onAdd,
+    onReorder
 }: {
     items: ChecklistItem[],
     onToggle: (id: string) => void,
     onUpdate: (id: string, text: string) => void,
     onDelete: (id: string) => void,
-    onAdd: (text: string) => void
+    onAdd: (text: string) => void,
+    onReorder: (items: ChecklistItem[]) => void
 }) {
     const [newItemText, setNewItemText] = useState("");
 
@@ -242,32 +246,17 @@ function ChecklistEditor({
 
     return (
         <div style={styles.checklistContainer}>
-            {items.map(item => (
-                <div key={item.id} style={styles.checklistItem}>
-                    <input
-                        type="checkbox"
-                        checked={item.checked}
-                        onChange={() => onToggle(item.id)}
-                        style={{ marginTop: '0.35rem', cursor: 'pointer' }}
+            <Reorder.Group axis="y" values={items} onReorder={onReorder} style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {items.map(item => (
+                    <DraggableChecklistItem
+                        key={item.id}
+                        item={item}
+                        onToggle={onToggle}
+                        onUpdate={onUpdate}
+                        onDelete={onDelete}
                     />
-                    <input
-                        type="text"
-                        value={item.text}
-                        onChange={(e) => onUpdate(item.id, e.target.value)}
-                        style={{
-                            ...styles.checklistInput,
-                            color: item.checked ? 'var(--muted-foreground)' : 'var(--foreground)',
-                            textDecoration: item.checked ? 'line-through' : 'none',
-                        }}
-                    />
-                    <button
-                        onClick={() => onDelete(item.id)}
-                        style={styles.deleteItemButton}
-                    >
-                        <X size={16} />
-                    </button>
-                </div>
-            ))}
+                ))}
+            </Reorder.Group>
 
             <form onSubmit={handleSubmit} style={styles.addItemForm}>
                 <Plus size={16} />
@@ -280,6 +269,64 @@ function ChecklistEditor({
                 />
             </form>
         </div>
+    );
+}
+
+function DraggableChecklistItem({ item, onToggle, onUpdate, onDelete }: {
+    item: ChecklistItem,
+    onToggle: (id: string) => void,
+    onUpdate: (id: string, text: string) => void,
+    onDelete: (id: string) => void
+}) {
+    const controls = useDragControls();
+
+    return (
+        <Reorder.Item
+            value={item}
+            dragListener={false}
+            dragControls={controls}
+            style={{ position: 'relative' }}
+        >
+            <div style={styles.checklistItem}>
+                <div
+                    onPointerDown={(e) => controls.start(e)}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'grab',
+                        padding: '0.35rem',
+                        opacity: 0.3,
+                        marginRight: '0.25rem',
+                        touchAction: 'none'
+                    }}
+                >
+                    <GripVertical size={16} />
+                </div>
+                <input
+                    type="checkbox"
+                    checked={item.checked}
+                    onChange={() => onToggle(item.id)}
+                    style={{ marginTop: '0.35rem', cursor: 'pointer' }}
+                />
+                <input
+                    type="text"
+                    value={item.text}
+                    onChange={(e) => onUpdate(item.id, e.target.value)}
+                    style={{
+                        ...styles.checklistInput,
+                        color: item.checked ? 'var(--muted-foreground)' : 'var(--foreground)',
+                        textDecoration: item.checked ? 'line-through' : 'none',
+                    }}
+                />
+                <button
+                    onClick={() => onDelete(item.id)}
+                    style={styles.deleteItemButton}
+                >
+                    <X size={16} />
+                </button>
+            </div>
+        </Reorder.Item>
     );
 }
 

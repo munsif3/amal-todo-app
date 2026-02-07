@@ -25,6 +25,7 @@ export interface Task {
         userId: string;
     }[];
     routineId?: string | null;
+    order?: number;
     createdAt: Timestamp;
     updatedAt: Timestamp;
 }
