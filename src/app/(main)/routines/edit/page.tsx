@@ -2,10 +2,13 @@
 
 import { useAuth } from "@/lib/firebase/auth-context";
 import { getRoutine, updateRoutine, createRoutine, deleteRoutine } from "@/lib/firebase/routines";
+import { subscribeToAccounts } from "@/lib/firebase/accounts";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
+
+import AreaSelector from "@/components/ui/AreaSelector";
 
 function RoutineDetailContent() {
     const searchParams = useSearchParams();
@@ -21,12 +24,26 @@ function RoutineDetailContent() {
     const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
     const [monthDay, setMonthDay] = useState<number>(1);
     const [frequencyType, setFrequencyType] = useState<'weekly' | 'monthly'>('weekly');
+    const [accounts, setAccounts] = useState<any[]>([]);
+    const [accountId, setAccountId] = useState<string>("");
 
     useEffect(() => {
-        if (!user || isNew) return;
+        if (!user) return;
+
+        // Subscribe to accounts
+        const unsubscribeAccounts = subscribeToAccounts(user.uid, (data) => {
+            setAccounts(data);
+        });
+
+        if (isNew) {
+            setLoading(false);
+            return () => unsubscribeAccounts();
+        }
+
         getRoutine(id as string).then(data => {
             if (data) {
                 setTitle(data.title);
+                setAccountId(data.accountId || "");
 
                 // Determine frequency type based on schedule
                 if (data.schedule === 'monthly') {
@@ -49,6 +66,8 @@ function RoutineDetailContent() {
             }
             setLoading(false);
         });
+
+        return () => unsubscribeAccounts();
     }, [user, id, isNew]);
 
     const handleSave = async () => {
@@ -71,6 +90,7 @@ function RoutineDetailContent() {
             title,
             schedule: finalSchedule,
             days: finalDays,
+            accountId: accountId || null
         };
 
         if (finalMonthDay) {
@@ -143,6 +163,15 @@ function RoutineDetailContent() {
                             border: '1px solid var(--border)',
                             fontSize: '1rem'
                         }}
+                    />
+                </div>
+
+                <div>
+                    <AreaSelector
+                        accounts={accounts}
+                        selectedAccountId={accountId}
+                        onSelect={(id) => setAccountId(id)}
+                        label="Area (Optional)"
                     />
                 </div>
 

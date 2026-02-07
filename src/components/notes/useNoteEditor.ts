@@ -134,7 +134,7 @@ export function useNoteEditor({ existingNote, initialAccountId }: UseNoteEditorP
 
         const timeoutId = setTimeout(() => {
             save(false);
-        }, 2000); // 2 second debounce
+        }, 500); // 500ms debounce
 
         return () => clearTimeout(timeoutId);
     }, [title, content, checklistItems, isPinned, accountId, isDirty, user, save]);

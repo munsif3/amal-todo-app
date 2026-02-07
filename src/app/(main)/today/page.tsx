@@ -3,11 +3,13 @@
 import { useAuth } from "@/lib/firebase/auth-context";
 import { subscribeToTasks, updateTaskStatus } from "@/lib/firebase/tasks";
 import { subscribeToAccounts } from "@/lib/firebase/accounts";
-import { subscribeToRoutines, toggleRoutineCompletion } from "@/lib/firebase/routines";
+import { subscribeToRoutines } from "@/lib/firebase/routines";
 import { Task, Account, Routine } from "@/types";
 import { useEffect, useState } from "react";
 import TaskCard from "@/components/today/TaskCard";
-import { Check, Repeat } from "lucide-react";
+import { Check, Repeat, Search } from "lucide-react";
+
+import { useRoutineCompletion } from "@/lib/hooks/use-routine-completion";
 
 export default function TodayPage() {
     const { user } = useAuth();
@@ -15,9 +17,12 @@ export default function TodayPage() {
     const [routines, setRoutines] = useState<Routine[]>([]);
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState("");
+
+    const { isRoutineCompletedToday, toggleCompletion, todayStr } = useRoutineCompletion(user);
 
     const todayDate = new Date();
-    const todayStr = todayDate.toISOString().split('T')[0];
+    // todayStr is now provided by the hook, but we need todayDate components for filtering
     const currentDayIdx = todayDate.getDay(); // 0-6
     const currentMonthDay = todayDate.getDate(); // 1-31
 
@@ -64,17 +69,17 @@ export default function TodayPage() {
         }
     };
 
-    const handleRoutineToggle = async (routine: Routine) => {
-        if (!user) return;
-        const isCompleted = routine.completionLog?.[todayStr]?.[user.uid] || false;
-        await toggleRoutineCompletion(routine.id, user.uid, todayStr, !isCompleted);
-    };
+    // Filter logic
+    const filterItem = (text: string) => text.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const activeTasks = tasks.filter(t => t.status !== 'done');
-    const finishedTasks = tasks.filter(t => t.status === 'done');
+    const activeTasks = tasks.filter(t => t.status !== 'done' && (filterItem(t.title) || (t.description && filterItem(t.description))));
+    const finishedTasks = tasks.filter(t => t.status === 'done' && (filterItem(t.title) || (t.description && filterItem(t.description))));
 
     // Filter Routines for Today
     const todaysRoutines = routines.filter(r => {
+        // Search filter
+        if (!filterItem(r.title)) return false;
+
         // Monthly
         if (r.schedule === 'monthly') {
             return r.monthDay === currentMonthDay;
@@ -101,6 +106,25 @@ export default function TodayPage() {
 
     return (
         <div>
+            {/* Search Bar */}
+            <div style={{ position: 'relative', marginBottom: '2rem' }}>
+                <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }} />
+                <input
+                    type="text"
+                    placeholder="Search today..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{
+                        width: '100%',
+                        padding: '0.75rem 0.75rem 0.75rem 2.75rem',
+                        borderRadius: 'var(--radius)',
+                        border: '1px solid var(--border)',
+                        fontSize: '1rem',
+                        backgroundColor: 'rgba(0,0,0,0.02)'
+                    }}
+                />
+            </div>
+
             {todaysRoutines.length > 0 && (
                 <section style={{ marginBottom: '2rem' }}>
                     <h2 style={{ fontSize: '0.875rem', color: 'var(--foreground)', opacity: 0.4, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1rem' }}>
@@ -108,7 +132,9 @@ export default function TodayPage() {
                     </h2>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         {todaysRoutines.map(routine => {
-                            const isCompleted = routine.completionLog?.[todayStr]?.[user!.uid] || false;
+                            const isCompleted = isRoutineCompletedToday(routine);
+                            const areaColor = routine.accountId ? accounts.find(a => a.id === routine.accountId)?.color : undefined;
+
                             return (
                                 <div key={routine.id} style={{
                                     display: 'flex',
@@ -117,11 +143,12 @@ export default function TodayPage() {
                                     padding: '0.75rem 1rem',
                                     borderRadius: '12px',
                                     border: '1px solid var(--border)',
+                                    borderLeft: areaColor ? `4px solid ${areaColor}` : '1px solid var(--border)',
                                     opacity: isCompleted ? 0.6 : 1,
                                     transition: 'all 0.2s ease'
                                 }}>
                                     <button
-                                        onClick={() => handleRoutineToggle(routine)}
+                                        onClick={() => toggleCompletion(routine)}
                                         style={{
                                             width: '20px',
                                             height: '20px',

@@ -1,33 +1,38 @@
 "use client";
 
 import { useAuth } from "@/lib/firebase/auth-context";
-import { subscribeToRoutines, toggleRoutineCompletion } from "@/lib/firebase/routines";
-import { Routine } from "@/types";
+import { subscribeToRoutines } from "@/lib/firebase/routines";
+import { subscribeToAccounts } from "@/lib/firebase/accounts";
+import { Routine, Account } from "@/types";
 import { Plus, Check, MoreVertical } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { useRoutineCompletion } from "@/lib/hooks/use-routine-completion";
+
 export default function RoutinesPage() {
     const { user } = useAuth();
     const [routines, setRoutines] = useState<Routine[]>([]);
+    const [accounts, setAccounts] = useState<Account[]>([]);
     const [loading, setLoading] = useState(true);
-    const todayStr = new Date().toISOString().split('T')[0];
+
+    // Use the hook
+    const { isRoutineCompletedToday, toggleCompletion, todayStr } = useRoutineCompletion(user);
 
     useEffect(() => {
         if (!user) return;
-        const unsubscribe = subscribeToRoutines(user.uid, (data) => {
+        const unsubscribeRoutines = subscribeToRoutines(user.uid, (data) => {
             setRoutines(data);
             setLoading(false);
         });
-        return () => unsubscribe();
+        const unsubscribeAccounts = subscribeToAccounts(user.uid, (data) => {
+            setAccounts(data);
+        });
+        return () => {
+            unsubscribeRoutines();
+            unsubscribeAccounts();
+        };
     }, [user]);
-
-    const handleToggle = async (routine: Routine) => {
-        if (!user) return;
-        // Check current status
-        const isCompleted = routine.completionLog?.[todayStr]?.[user.uid] || false;
-        await toggleRoutineCompletion(routine.id, user.uid, todayStr, !isCompleted);
-    };
 
     const getDaysUntilNext = (routine: Routine): number => {
         const now = new Date();
@@ -104,6 +109,8 @@ export default function RoutinesPage() {
                     {routines.map((routine) => {
                         const isCompleted = routine.completionLog?.[todayStr]?.[user!.uid] || false;
                         const daysUntil = getDaysUntilNext(routine);
+                        const areaColor = routine.accountId ? accounts.find(a => a.id === routine.accountId)?.color : undefined;
+
                         return (
                             <div key={routine.id} style={{
                                 display: 'flex',
@@ -112,11 +119,12 @@ export default function RoutinesPage() {
                                 padding: '1rem',
                                 borderRadius: '12px',
                                 border: '1px solid var(--border)',
+                                borderLeft: areaColor ? `4px solid ${areaColor}` : '1px solid var(--border)',
                                 transition: 'all 0.2s ease',
                                 opacity: isCompleted ? 0.8 : 1
                             }}>
                                 <button
-                                    onClick={() => handleToggle(routine)}
+                                    onClick={() => toggleCompletion(routine)}
                                     style={{
                                         width: '24px',
                                         height: '24px',

@@ -61,6 +61,7 @@ export interface Meeting {
 export interface Routine {
     id: string;
     ownerId: string;
+    accountId?: string;
     title: string;
     schedule: "daily" | "weekly" | "custom" | "monthly";
     type: 'fixed' | 'flexible';

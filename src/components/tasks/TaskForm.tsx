@@ -5,6 +5,7 @@ import { subscribeToAccounts } from "@/lib/firebase/accounts";
 import { subscribeToTasks } from "@/lib/firebase/tasks";
 import { Account, Task } from "@/types";
 import { Input, Textarea, Button } from "@/components/ui/Form";
+import AreaSelector from "@/components/ui/AreaSelector";
 import { Timestamp } from "firebase/firestore";
 
 import { DEFAULT_ACCOUNT_COLOR } from "@/lib/constants";
@@ -113,45 +114,11 @@ export default function TaskForm({ userId, initialData, onSubmit, submitLabel = 
                 onChange={(e) => setDeadline(e.target.value)}
             />
 
-            <div style={{ marginBottom: '2rem' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem', opacity: 0.7 }}>Area</label>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {accounts.map(acc => {
-                        const isSelected = accountId === acc.id;
-                        const color = acc.color || DEFAULT_ACCOUNT_COLOR;
-
-                        return (
-                            <button
-                                key={acc.id}
-                                type="button"
-                                onClick={() => setAccountId(isSelected ? "" : acc.id)}
-                                style={{
-                                    padding: '0.5rem 1rem',
-                                    borderRadius: '20px',
-                                    fontSize: '0.875rem',
-                                    fontWeight: '500',
-                                    cursor: 'pointer',
-                                    border: `1px solid ${color}`,
-                                    backgroundColor: isSelected ? color : 'transparent',
-                                    color: isSelected ? 'white' : 'var(--foreground)',
-                                    opacity: isSelected ? 1 : 0.7,
-                                    transition: 'all 0.2s ease',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem'
-                                }}
-                            >
-                                {acc.name}
-                            </button>
-                        );
-                    })}
-                    {accounts.length === 0 && (
-                        <p style={{ fontSize: '0.875rem', opacity: 0.5, fontStyle: 'italic' }}>
-                            No areas created yet.
-                        </p>
-                    )}
-                </div>
-            </div>
+            <AreaSelector
+                accounts={accounts}
+                selectedAccountId={accountId}
+                onSelect={(id) => setAccountId(id)}
+            />
 
             <div style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: 'rgba(0,0,0,0.02)', borderRadius: '8px' }}>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '1rem', color: '#666' }}>Email Reference</label>

@@ -76,6 +76,30 @@ export default function TaskCard({ task, onStatusChange, areaColor, isBlocked = 
                 whileTap={{ cursor: isBlocked ? 'not-allowed' : 'grabbing' }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
+                {/* Tick Button */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        // Toggle between done and next (todo)
+                        onStatusChange(task.status === 'done' ? 'next' : 'done');
+                    }}
+                    style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        border: `2px solid ${task.status === 'done' ? 'var(--status-done)' : 'var(--border)'}`,
+                        backgroundColor: task.status === 'done' ? 'var(--status-done)' : 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        padding: 0,
+                        flexShrink: 0
+                    }}
+                >
+                    {task.status === 'done' && <Check size={14} color="white" strokeWidth={3} />}
+                </button>
+
                 <div style={{ flex: 1 }}>
                     <h3 style={{
                         fontSize: '1rem',
