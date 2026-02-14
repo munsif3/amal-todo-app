@@ -1,5 +1,7 @@
 "use client";
 
+import { useTheme } from "next-themes";
+
 import { Task } from "@/types";
 import { Check, Clock, Pencil, Calendar, GripVertical } from "lucide-react";
 import { motion, useMotionValue, useTransform } from "framer-motion";
@@ -19,10 +21,14 @@ export default function TaskCard({ task, onStatusChange, areaColor, isBlocked = 
     const x = useMotionValue(0);
 
     // Transform x position to colors for swipe actions
+    const { resolvedTheme } = useTheme();
+    const centerColor = resolvedTheme === 'dark' ? '#242424' : '#ffffff';
+
+    // Transform x position to colors for swipe actions
     const background = useTransform(
         x,
         [-100, 0, 100],
-        ["rgba(209, 184, 148, 0.5)", "rgba(255, 255, 255, 1)", "rgba(138, 154, 91, 0.5)"]
+        ["rgba(209, 184, 148, 0.5)", centerColor, "rgba(138, 154, 91, 0.5)"]
     );
 
     const handleDragEnd = (_: any, info: any) => {
@@ -130,7 +136,7 @@ export default function TaskCard({ task, onStatusChange, areaColor, isBlocked = 
                         alignItems: 'center',
                         gap: '0.5rem'
                     }}>
-                        {isBlocked && <span style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: '#f0f0f0', color: '#888' }}>BLOCKED</span>}
+                        {isBlocked && <span style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'var(--muted)', color: 'var(--text-muted)' }}>BLOCKED</span>}
                         {task.title}
                     </h3>
                     {task.description && (
@@ -156,7 +162,7 @@ export default function TaskCard({ task, onStatusChange, areaColor, isBlocked = 
                                     alignItems: 'center',
                                     gap: '0.25rem',
                                     textDecoration: 'none',
-                                    backgroundColor: 'rgba(0,0,0,0.03)',
+                                    backgroundColor: 'var(--bg-subtle)',
                                     padding: '2px 6px',
                                     borderRadius: '4px'
                                 }}

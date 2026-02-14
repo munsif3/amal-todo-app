@@ -141,7 +141,7 @@ function RoutineDetailContent() {
                     onClick={handleSave}
                     style={{
                         backgroundColor: 'var(--primary)',
-                        color: 'white',
+                        color: 'var(--primary-foreground)',
                         border: 'none',
                         padding: '0.5rem 1rem',
                         borderRadius: '6px',
@@ -186,7 +186,7 @@ function RoutineDetailContent() {
                             style={{
                                 padding: '0.5rem 0',
                                 borderBottom: frequencyType === 'weekly' ? '2px solid var(--primary)' : '2px solid transparent',
-                                color: frequencyType === 'weekly' ? 'var(--primary)' : '#888',
+                                color: frequencyType === 'weekly' ? 'var(--primary)' : 'var(--text-secondary)',
                                 background: 'none',
                                 borderTop: 'none', borderLeft: 'none', borderRight: 'none',
                                 cursor: 'pointer',
@@ -200,7 +200,7 @@ function RoutineDetailContent() {
                             style={{
                                 padding: '0.5rem 0',
                                 borderBottom: frequencyType === 'monthly' ? '2px solid var(--primary)' : '2px solid transparent',
-                                color: frequencyType === 'monthly' ? 'var(--primary)' : '#888',
+                                color: frequencyType === 'monthly' ? 'var(--primary)' : 'var(--text-secondary)',
                                 background: 'none',
                                 borderTop: 'none', borderLeft: 'none', borderRight: 'none',
                                 cursor: 'pointer',
@@ -233,7 +233,7 @@ function RoutineDetailContent() {
                                                 borderRadius: '50%',
                                                 border: isSelected ? 'none' : '1px solid var(--border)',
                                                 backgroundColor: isSelected ? 'var(--primary)' : 'transparent',
-                                                color: isSelected ? 'white' : 'var(--foreground)',
+                                                color: isSelected ? 'var(--primary-foreground)' : 'var(--foreground)',
                                                 fontWeight: '600',
                                                 cursor: 'pointer',
                                                 transition: 'all 0.2s ease'
@@ -244,7 +244,7 @@ function RoutineDetailContent() {
                                     );
                                 })}
                             </div>
-                            <p style={{ fontSize: '0.875rem', color: '#666' }}>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                                 {selectedDays.length === 7 ? "Every day" :
                                     selectedDays.length === 0 ? "No days selected" :
                                         selectedDays.length === 5 && selectedDays.every(d => d >= 1 && d <= 5) ? "Weekdays" :
@@ -255,7 +255,7 @@ function RoutineDetailContent() {
                         <>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>Day of Month</label>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <span style={{ color: '#666' }}>Every</span>
+                                <span style={{ color: 'var(--text-secondary)' }}>Every</span>
                                 <input
                                     type="number"
                                     min="1"
@@ -270,7 +270,7 @@ function RoutineDetailContent() {
                                         textAlign: 'center'
                                     }}
                                 />
-                                <span style={{ color: '#666' }}>of the month</span>
+                                <span style={{ color: 'var(--text-secondary)' }}>of the month</span>
                             </div>
                         </>
                     )}

@@ -103,7 +103,7 @@ function AccountDetailContent() {
                     disabled={submitting || !name.trim()}
                     style={{
                         backgroundColor: 'var(--primary)',
-                        color: 'white',
+                        color: 'var(--primary-foreground)',
                         border: 'none',
                         padding: '0.5rem 1rem',
                         borderRadius: '6px',

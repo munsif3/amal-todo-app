@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Calendar, CheckCircle2, LayoutGrid, Plus, Repeat, User, Book } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 const navItems = [
     { label: "Today", href: "/today", icon: CheckCircle2 },
@@ -40,7 +41,7 @@ export default function Sidebar() {
                 justifyContent: 'center',
                 gap: '0.5rem',
                 backgroundColor: 'var(--primary)',
-                color: 'white',
+                color: 'var(--primary-foreground)',
                 padding: '0.75rem',
                 borderRadius: '8px',
                 fontWeight: '600',
@@ -67,8 +68,8 @@ export default function Sidebar() {
                                 gap: '0.75rem',
                                 padding: '0.75rem',
                                 borderRadius: '8px',
-                                color: isActive ? 'var(--primary)' : '#888',
-                                backgroundColor: isActive ? 'rgba(0,0,0,0.03)' : 'transparent',
+                                color: isActive ? 'var(--primary)' : 'var(--text-secondary)',
+                                backgroundColor: isActive ? 'var(--bg-subtle)' : 'transparent',
                                 transition: 'var(--transition-ease)',
                                 fontWeight: isActive ? '600' : '500',
                             }}
@@ -79,6 +80,10 @@ export default function Sidebar() {
                     );
                 })}
             </nav>
+
+            <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+                <ThemeToggle />
+            </div>
         </aside>
     );
 }

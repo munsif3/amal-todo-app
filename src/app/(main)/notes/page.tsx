@@ -54,7 +54,7 @@ export default function NotesPage() {
                         alignItems: 'center',
                         gap: '0.5rem',
                         backgroundColor: 'var(--primary)',
-                        color: 'white',
+                        color: 'var(--primary-foreground)',
                         padding: '0.5rem 1rem',
                         borderRadius: 'var(--radius)',
                         fontWeight: '600',
@@ -79,7 +79,7 @@ export default function NotesPage() {
                         borderRadius: 'var(--radius)',
                         border: '1px solid var(--border)',
                         fontSize: '1rem',
-                        backgroundColor: 'rgba(0,0,0,0.02)'
+                        backgroundColor: 'var(--bg-subtle)'
                     }}
                 />
             </div>

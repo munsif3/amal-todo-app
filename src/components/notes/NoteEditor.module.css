@@ -43,7 +43,7 @@
     gap: 0.5rem;
     padding: 0.5rem 1rem;
     background-color: var(--primary);
-    color: white;
+    color: var(--primary-foreground);
     border-radius: var(--radius);
     border: none;
     cursor: pointer;
@@ -118,7 +118,7 @@
     font-family: monospace;
     font-size: 1rem;
     line-height: 1.6;
-    background-color: var(--card);
+    background-color: var(--card-bg);
     width: 100%;
 }
 

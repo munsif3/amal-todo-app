@@ -31,7 +31,7 @@ export function NoteToolbar({
             </button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                     {isSaving ? 'Saving...' : 'Saved'}
                 </div>
                 {onPrint && (

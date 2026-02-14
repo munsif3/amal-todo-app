@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import BottomNav from "@/components/shared/BottomNav";
 import Sidebar from "@/components/shared/Sidebar";
 import Loading from "@/components/ui/Loading";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export default function MainLayout({
     children,
@@ -34,9 +35,13 @@ export default function MainLayout({
                     backgroundColor: 'var(--background)',
                     position: 'sticky',
                     top: 0,
-                    zIndex: 50
+                    zIndex: 50,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
                 }}>
                     <h1 style={{ fontSize: '1.25rem', fontWeight: '700', letterSpacing: '-0.02em' }}>AMAL</h1>
+                    <ThemeToggle />
                 </header>
                 <main style={{ padding: '0 1.5rem' }}>
                     {children}

@@ -92,7 +92,7 @@ function MeetingDetailContent() {
                     onClick={handleSave}
                     style={{
                         backgroundColor: 'var(--primary)',
-                        color: 'white',
+                        color: 'var(--primary-foreground)',
                         border: 'none',
                         padding: '0.5rem 1rem',
                         borderRadius: '6px',
@@ -165,8 +165,8 @@ function MeetingDetailContent() {
                                 <button onClick={() => toggleChecklistItem(item.id)} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--primary)' }}>
                                     {item.completed ? <CheckSquare size={20} /> : <Square size={20} />}
                                 </button>
-                                <span style={{ textDecoration: item.completed ? 'line-through' : 'none', color: item.completed ? '#888' : 'inherit', flex: 1 }}>{item.text}</span>
-                                <button onClick={() => setChecklist(checklist.filter(i => i.id !== item.id))} style={{ background: 'none', border: 'none', color: '#ccc' }}>
+                                <span style={{ textDecoration: item.completed ? 'line-through' : 'none', color: item.completed ? 'var(--text-muted)' : 'inherit', flex: 1 }}>{item.text}</span>
+                                <button onClick={() => setChecklist(checklist.filter(i => i.id !== item.id))} style={{ background: 'none', border: 'none', color: 'var(--text-muted)' }}>
                                     <Trash2 size={16} />
                                 </button>
                             </div>

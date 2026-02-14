@@ -70,7 +70,7 @@ function AccountDetailsContent() {
                 <button
                     onClick={() => router.back()}
                     style={{
-                        opacity: 0.5,
+                        color: 'var(--text-muted)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.5rem',
@@ -95,7 +95,7 @@ function AccountDetailsContent() {
                             alignItems: 'center',
                             gap: '0.5rem',
                             backgroundColor: 'var(--primary)',
-                            color: 'white',
+                            color: 'var(--primary-foreground)',
                             padding: '0.5rem 1rem',
                             borderRadius: 'var(--radius)',
                             fontWeight: '600',

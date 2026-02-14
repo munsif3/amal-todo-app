@@ -35,7 +35,7 @@ export default function MeetingsPage() {
                 <h2 style={{ fontSize: '1.5rem', fontWeight: '700' }}>Meetings</h2>
                 <Link href="/meetings/edit?id=new" style={{
                     backgroundColor: 'var(--primary)',
-                    color: 'white',
+                    color: 'var(--primary-foreground)',
                     width: '36px',
                     height: '36px',
                     borderRadius: '50%',
@@ -56,7 +56,7 @@ export default function MeetingsPage() {
                 <div style={{
                     textAlign: 'center',
                     padding: '3rem 1rem',
-                    color: '#888',
+                    color: 'var(--text-muted)',
                     border: '1px dashed var(--border)',
                     borderRadius: '12px'
                 }}>
@@ -69,7 +69,7 @@ export default function MeetingsPage() {
                     {meetings.map((meeting) => (
                         <Link href={`/meetings/edit?id=${meeting.id}`} key={meeting.id} style={{
                             display: 'block',
-                            backgroundColor: 'white',
+                            backgroundColor: 'var(--card-bg)',
                             padding: '1rem',
                             borderRadius: '12px',
                             border: '1px solid var(--border)',
@@ -89,7 +89,7 @@ export default function MeetingsPage() {
                                 alignItems: 'center',
                                 gap: '1rem',
                                 fontSize: '0.875rem',
-                                color: '#666'
+                                color: 'var(--text-secondary)'
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                     <Clock size={14} />

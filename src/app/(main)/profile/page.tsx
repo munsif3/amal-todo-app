@@ -3,6 +3,7 @@
 import { useAuth } from "@/lib/firebase/auth-context";
 import { Button } from "@/components/ui/Form";
 import { LogOut, User } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export default function ProfilePage() {
     const { user, logout } = useAuth();
@@ -41,9 +42,9 @@ export default function ProfilePage() {
                     border: '1px solid var(--border)',
                     overflow: 'hidden'
                 }}>
-                    <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Dark Mode</span>
-                        <span style={{ opacity: 0.3 }}>Coming Soon</span>
+                    <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Appearance</span>
+                        <ThemeToggle />
                     </div>
                     <div style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between' }}>
                         <span>Weekly Digest</span>

@@ -81,7 +81,7 @@ export default function RoutinesPage() {
                 <h2 style={{ fontSize: '1.5rem', fontWeight: '700' }}>Routines</h2>
                 <Link href="/routines/edit?id=new" style={{
                     backgroundColor: 'var(--primary)',
-                    color: 'white',
+                    color: 'var(--primary-foreground)',
                     width: '36px',
                     height: '36px',
                     borderRadius: '50%',
@@ -102,7 +102,7 @@ export default function RoutinesPage() {
                 <div style={{
                     textAlign: 'center',
                     padding: '3rem 1rem',
-                    color: '#888',
+                    color: 'var(--text-muted)',
                     border: '1px dashed var(--border)',
                     borderRadius: '12px'
                 }}>
@@ -119,7 +119,7 @@ export default function RoutinesPage() {
                             <div key={routine.id} style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                backgroundColor: isCompleted ? 'rgba(0,0,0,0.02)' : 'white',
+                                backgroundColor: isCompleted ? 'var(--bg-subtle)' : 'var(--card-bg)',
                                 padding: '1rem',
                                 borderRadius: '12px',
                                 border: '1px solid var(--border)',
@@ -133,12 +133,12 @@ export default function RoutinesPage() {
                                         width: '24px',
                                         height: '24px',
                                         borderRadius: '50%',
-                                        border: `2px solid ${isCompleted ? 'var(--primary)' : '#ccc'}`,
+                                        border: `2px solid ${isCompleted ? 'var(--primary)' : 'var(--border)'}`,
                                         backgroundColor: isCompleted ? 'var(--primary)' : 'transparent',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        color: 'white',
+                                        color: 'var(--primary-foreground)',
                                         marginRight: '1rem',
                                         cursor: 'pointer'
                                     }}
@@ -155,7 +155,7 @@ export default function RoutinesPage() {
                                         {routine.title}
                                     </h3>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <p style={{ fontSize: '0.75rem', color: '#888' }}>
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                                             {(() => {
                                                 if (routine.days && routine.days.length > 0) {
                                                     if (routine.days.length === 7) return "Daily";
@@ -187,8 +187,8 @@ export default function RoutinesPage() {
                                         {daysUntil > 0 && (
                                             <span style={{
                                                 fontSize: '0.7rem',
-                                                color: '#666',
-                                                backgroundColor: '#f0f0f0',
+                                                color: 'var(--text-secondary)',
+                                                backgroundColor: 'var(--muted)',
                                                 padding: '2px 6px',
                                                 borderRadius: '4px',
                                                 whiteSpace: 'nowrap'

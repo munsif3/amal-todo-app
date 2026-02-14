@@ -121,8 +121,8 @@ export default function TaskForm({ userId, initialData, onSubmit, onDelete, subm
                 onSelect={(id) => setAccountId(id)}
             />
 
-            <div style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: 'rgba(0,0,0,0.02)', borderRadius: '8px' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '1rem', color: '#666' }}>Email Reference</label>
+            <div style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: 'var(--bg-subtle)', borderRadius: '8px' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '1rem', color: 'var(--text-secondary)' }}>Email Reference</label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <Input
                         label="Email Subject"
@@ -143,7 +143,7 @@ export default function TaskForm({ userId, initialData, onSubmit, onDelete, subm
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem', opacity: 0.7 }}>Blocked By (Dependencies)</label>
                 <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.5rem' }}>
                     {availableTasks.length === 0 ? (
-                        <p style={{ fontSize: '0.875rem', color: '#888', fontStyle: 'italic', padding: '0.5rem' }}>No other active tasks to block this one.</p>
+                        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontStyle: 'italic', padding: '0.5rem' }}>No other active tasks to block this one.</p>
                     ) : (
                         availableTasks.map(t => (
                             <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', cursor: 'pointer' }}>

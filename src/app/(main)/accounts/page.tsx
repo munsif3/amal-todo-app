@@ -53,7 +53,7 @@ export default function AccountsPage() {
                     height: '32px',
                     borderRadius: '50%',
                     backgroundColor: 'var(--primary)',
-                    color: 'white',
+                    color: 'var(--primary-foreground)',
                     display: 'flex',
                     justifyContent: 'center',
                     alignItems: 'center',

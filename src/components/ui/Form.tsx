@@ -58,7 +58,7 @@ export const Button = ({ children, variant = 'primary', isLoading = false, ...pr
             fontWeight: '600',
             transition: 'var(--transition-ease)',
             backgroundColor: variant === 'primary' ? 'var(--primary)' : 'transparent',
-            color: variant === 'primary' ? 'white' : 'var(--primary)',
+            color: variant === 'primary' ? 'var(--primary-foreground)' : 'var(--primary)',
             border: variant === 'secondary' ? '1px solid var(--primary)' : 'none',
             cursor: (props.disabled || isLoading) ? 'not-allowed' : 'pointer',
             opacity: (props.disabled || isLoading) ? 0.5 : 1,
