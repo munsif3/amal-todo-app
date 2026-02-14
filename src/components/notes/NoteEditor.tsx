@@ -1,3 +1,4 @@
+"use client";
 import { useReactToPrint } from "react-to-print";
 import { useRef } from "react";
 

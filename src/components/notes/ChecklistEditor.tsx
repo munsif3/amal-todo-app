@@ -1,3 +1,4 @@
+"use client";
 import { useState } from "react";
 import { Reorder, useDragControls } from "framer-motion";
 import { GripVertical, Plus, X } from "lucide-react";

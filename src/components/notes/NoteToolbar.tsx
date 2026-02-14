@@ -1,3 +1,4 @@
+"use client";
 import { ArrowLeft, Save, Trash2, Printer } from "lucide-react";
 import styles from "./NoteEditor.module.css";
 import { useRouter } from "next/navigation";
