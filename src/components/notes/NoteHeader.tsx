@@ -20,7 +20,7 @@ export function NoteHeader({
     accountId, setAccountId,
     isPinned, setIsPinned,
     accounts,
-    mode, setMode
+    mode = 'text', setMode
 }: NoteHeaderProps) {
     return (
         <>

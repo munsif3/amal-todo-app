@@ -48,7 +48,7 @@ export default function NotesPage() {
                     <p style={{ opacity: 0.5 }}>Reference notes and lists</p>
                 </div>
 
-                <Link href="/add?mode=NOTE">
+                <Link href="/notes/new">
                     <button style={{
                         display: 'flex',
                         alignItems: 'center',

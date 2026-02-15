@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { subscribeToTasks, updateTaskStatus, updateTasksOrder } from "@/lib/firebase/tasks";
+import { subscribeToActiveTasks, subscribeToRecentCompletedTasks, updateTaskStatus, updateTasksOrder } from "@/lib/firebase/tasks";
 import { Task } from "@/types";
 import { User } from 'firebase/auth';
 
@@ -10,9 +10,13 @@ export function useTasks(user: User | null | undefined, searchQuery: string = ""
 
     useEffect(() => {
         if (user) {
-            const unsubscribe = subscribeToTasks(user.uid, (fetchedTasks) => {
+            let activeTasksData: Task[] = [];
+            let completedTasksData: Task[] = [];
+
+            const updateState = () => {
                 // Client-side sort by order then createdAt
-                const sorted = [...fetchedTasks].sort((a, b) => {
+                const combined = [...activeTasksData, ...completedTasksData];
+                const sorted = combined.sort((a, b) => {
                     const orderA = a.order ?? Number.MAX_SAFE_INTEGER;
                     const orderB = b.order ?? Number.MAX_SAFE_INTEGER;
                     if (orderA !== orderB) return orderA - orderB;
@@ -24,9 +28,22 @@ export function useTasks(user: User | null | undefined, searchQuery: string = ""
                     setTasks(sorted);
                 }
                 if (loading) setLoading(false);
+            };
+
+            const unsubscribeActive = subscribeToActiveTasks(user.uid, (fetchedTasks) => {
+                activeTasksData = fetchedTasks;
+                updateState();
             });
 
-            return () => unsubscribe();
+            const unsubscribeCompleted = subscribeToRecentCompletedTasks(user.uid, 50, (fetchedTasks) => {
+                completedTasksData = fetchedTasks;
+                updateState();
+            });
+
+            return () => {
+                unsubscribeActive();
+                unsubscribeCompleted();
+            };
         } else {
             setTasks([]);
             setLoading(false);

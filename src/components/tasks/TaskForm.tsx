@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { subscribeToAccounts } from "@/lib/firebase/accounts";
-import { subscribeToTasks } from "@/lib/firebase/tasks";
+import { subscribeToActiveTasks } from "@/lib/firebase/tasks";
 import { Account, Task } from "@/types";
 import { Input, Textarea, Button } from "@/components/ui/Form";
 import AreaSelector from "@/components/ui/AreaSelector";
@@ -56,7 +56,7 @@ export default function TaskForm({ userId, initialData, onSubmit, onDelete, subm
     useEffect(() => {
         if (userId) {
             const unsubscribeAccounts = subscribeToAccounts(userId, setAccounts);
-            const unsubscribeTasks = subscribeToTasks(userId, setTasks);
+            const unsubscribeTasks = subscribeToActiveTasks(userId, setTasks);
             return () => {
                 unsubscribeAccounts();
                 unsubscribeTasks();

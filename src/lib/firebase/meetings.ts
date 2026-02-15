@@ -10,7 +10,8 @@ import {
     onSnapshot,
     orderBy,
     Timestamp,
-    serverTimestamp
+    serverTimestamp,
+    limit
 } from "firebase/firestore";
 import { db } from "./client";
 import { Meeting, CreateMeetingInput, UpdateMeetingInput } from "@/types";
@@ -20,9 +21,19 @@ const MEETINGS_COLLECTION = "meetings";
 const meetingConverter = genericConverter<Meeting>();
 
 export function subscribeToMeetings(userId: string, callback: (meetings: Meeting[]) => void) {
+    // Ideally we want: future meetings OR (past meetings that are NOT completed)
+    // Firestore OR queries are limited.
+    // Strategy: Fetch all "Active" meetings (not completed) + Recent Completed.
+    // Or simpler for MVP scalability: Fetch meetings starting from "7 days ago".
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sevenDaysAgoTimestamp = Timestamp.fromDate(sevenDaysAgo);
+
     const q = query(
         collection(db, MEETINGS_COLLECTION).withConverter(meetingConverter),
         where("ownerId", "==", userId),
+        where("startTime", ">=", sevenDaysAgoTimestamp),
         orderBy("startTime", "asc")
     );
 
