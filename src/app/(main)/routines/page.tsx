@@ -4,10 +4,11 @@ import { useAuth } from "@/lib/firebase/auth-context";
 import { subscribeToRoutines } from "@/lib/firebase/routines";
 import { subscribeToAccounts } from "@/lib/firebase/accounts";
 import { Routine, Account } from "@/types";
-import { Plus, Check, MoreVertical } from "lucide-react";
+import { Plus, Check, MoreVertical, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import Loader from "@/components/ui/Loading";
+import UnifiedItemCard, { UnifiedItem } from "@/components/today/UnifiedItemCard";
 
 import { useRoutineCompletion } from "@/lib/hooks/use-routine-completion";
 
@@ -16,6 +17,8 @@ export default function RoutinesPage() {
     const [routines, setRoutines] = useState<Routine[]>([]);
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [loading, setLoading] = useState(true);
+
+    const [showCompleted, setShowCompleted] = useState(false);
 
     // Use the hook
     const { isRoutineCompletedToday, toggleCompletion, todayStr } = useRoutineCompletion(user);
@@ -70,6 +73,74 @@ export default function RoutinesPage() {
         return 0; // Default daily
     };
 
+    const getFormattedSchedule = (routine: Routine) => {
+        if (routine.days && routine.days.length > 0) {
+            if (routine.days.length === 7) return "Daily";
+            if (routine.days.length === 5 && routine.days.every(d => d >= 1 && d <= 5)) return "Weekdays";
+            if (routine.days.length === 2 && routine.days.includes(0) && routine.days.includes(6)) return "Weekends";
+
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            return routine.days.sort().map(d => dayNames[d]).join(', ');
+        }
+        // Fallback for legacy data
+        if (routine.schedule === 'daily') return "Daily";
+        if (routine.schedule === 'weekly') return "Weekly";
+        if (routine.schedule === 'monthly') {
+            const suffix = (n: number) => {
+                if (n >= 11 && n <= 13) return "th";
+                switch (n % 10) {
+                    case 1: return "st";
+                    case 2: return "nd";
+                    case 3: return "rd";
+                    default: return "th";
+                }
+            };
+            return `Monthly on the ${routine.monthDay || 1}${suffix(routine.monthDay || 1)}`;
+        }
+        if (routine.schedule === 'custom' && (!routine.days || routine.days.length === 0)) return "Custom";
+        return routine.schedule || "Daily";
+    };
+
+    const unifiedRoutines: UnifiedItem[] = routines.map(routine => {
+        const isCompleted = routine.completionLog?.[todayStr]?.[user!.uid] || false;
+        const daysUntil = getDaysUntilNext(routine);
+
+        let itemTime = undefined;
+        if (routine.time) {
+            const [hours, minutes] = routine.time.split(':').map(Number);
+            const date = new Date();
+            date.setHours(hours, minutes, 0, 0);
+            itemTime = date;
+        }
+
+        let badge: UnifiedItem['badge'] = undefined;
+        if (daysUntil > 0) {
+            badge = {
+                text: daysUntil === 1 ? 'Tomorrow' : `in ${daysUntil} days`,
+                variant: 'neutral'
+            };
+        }
+
+        return {
+            id: routine.id!,
+            type: 'routine',
+            title: routine.title,
+            subtitle: getFormattedSchedule(routine),
+            time: itemTime,
+            isCompleted: isCompleted,
+            accountId: routine.accountId || undefined,
+            areaColor: accounts.find(a => a.id === routine.accountId)?.color,
+            originalItem: routine,
+            badge: badge
+        };
+    });
+
+    const filteredRoutines = unifiedRoutines.filter(r => showCompleted || !r.isCompleted);
+
+    const handleToggle = (item: UnifiedItem) => {
+        toggleCompletion(item.originalItem);
+    };
+
     return (
         <div style={{ paddingBottom: '80px' }}>
             <header style={{
@@ -79,22 +150,41 @@ export default function RoutinesPage() {
                 marginBottom: '1.5rem',
             }}>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: '700' }}>Routines</h2>
-                <Link href="/routines/edit?id=new" style={{
-                    backgroundColor: 'var(--primary)',
-                    color: 'var(--primary-foreground)',
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                }}>
-                    <Plus size={20} />
-                </Link>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <button
+                        onClick={() => setShowCompleted(!showCompleted)}
+                        style={{
+                            padding: '0.5rem',
+                            color: showCompleted ? 'var(--primary)' : 'var(--text-secondary)',
+                            backgroundColor: showCompleted ? 'var(--primary-muted)' : 'transparent',
+                            border: '1px solid var(--border)',
+                            borderRadius: '50%',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.2s ease',
+                            width: '36px',
+                            height: '36px'
+                        }}
+                        title={showCompleted ? "Hide Completed" : "Show Completed"}
+                    >
+                        {showCompleted ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                    <Link href="/new?mode=ROUTINE" style={{
+                        backgroundColor: 'var(--primary)',
+                        color: 'var(--primary-foreground)',
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}>
+                        <Plus size={20} />
+                    </Link>
+                </div>
             </header>
-
-
-
 
             {loading ? (
                 <Loader fullScreen={false} className="py-8" />
@@ -110,101 +200,18 @@ export default function RoutinesPage() {
                 </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {routines.map((routine) => {
-                        const isCompleted = routine.completionLog?.[todayStr]?.[user!.uid] || false;
-                        const daysUntil = getDaysUntilNext(routine);
-                        const areaColor = routine.accountId ? accounts.find(a => a.id === routine.accountId)?.color : undefined;
-
-                        return (
-                            <div key={routine.id} style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                backgroundColor: isCompleted ? 'var(--bg-subtle)' : 'var(--card-bg)',
-                                padding: '1rem',
-                                borderRadius: '12px',
-                                border: '1px solid var(--border)',
-                                borderLeft: areaColor ? `4px solid ${areaColor}` : '1px solid var(--border)',
-                                transition: 'all 0.2s ease',
-                                opacity: isCompleted ? 0.8 : 1
-                            }}>
-                                <button
-                                    onClick={() => toggleCompletion(routine)}
-                                    style={{
-                                        width: '24px',
-                                        height: '24px',
-                                        borderRadius: '50%',
-                                        border: `2px solid ${isCompleted ? 'var(--primary)' : 'var(--border)'}`,
-                                        backgroundColor: isCompleted ? 'var(--primary)' : 'transparent',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: 'var(--primary-foreground)',
-                                        marginRight: '1rem',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    {isCompleted && <Check size={14} strokeWidth={3} />}
-                                </button>
-
-                                <div style={{ flex: 1 }}>
-                                    <h3 style={{
-                                        fontWeight: '600',
-                                        textDecoration: isCompleted ? 'line-through' : 'none',
-                                        color: isCompleted ? '#888' : 'inherit'
-                                    }}>
-                                        {routine.title}
-                                    </h3>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                            {(() => {
-                                                if (routine.days && routine.days.length > 0) {
-                                                    if (routine.days.length === 7) return "Daily";
-                                                    if (routine.days.length === 5 && routine.days.every(d => d >= 1 && d <= 5)) return "Weekdays";
-                                                    if (routine.days.length === 2 && routine.days.includes(0) && routine.days.includes(6)) return "Weekends";
-
-                                                    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                                                    return routine.days.sort().map(d => dayNames[d]).join(', ');
-                                                }
-                                                // Fallback for legacy data
-                                                if (routine.schedule === 'daily') return "Daily";
-                                                if (routine.schedule === 'weekly') return "Weekly";
-                                                if (routine.schedule === 'monthly') {
-                                                    const suffix = (n: number) => {
-                                                        if (n >= 11 && n <= 13) return "th";
-                                                        switch (n % 10) {
-                                                            case 1: return "st";
-                                                            case 2: return "nd";
-                                                            case 3: return "rd";
-                                                            default: return "th";
-                                                        }
-                                                    };
-                                                    return `Monthly on the ${routine.monthDay || 1}${suffix(routine.monthDay || 1)}`;
-                                                }
-                                                if (routine.schedule === 'custom' && (!routine.days || routine.days.length === 0)) return "Custom"; // or "Paused"?
-                                                return routine.schedule || "Daily";
-                                            })()}
-                                        </p>
-                                        {daysUntil > 0 && (
-                                            <span style={{
-                                                fontSize: '0.7rem',
-                                                color: 'var(--text-secondary)',
-                                                backgroundColor: 'var(--muted)',
-                                                padding: '2px 6px',
-                                                borderRadius: '4px',
-                                                whiteSpace: 'nowrap'
-                                            }}>
-                                                {daysUntil === 1 ? 'Tomorrow' : `in ${daysUntil} days`}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <Link href={`/edit?type=routine&id=${routine.id}`} style={{ color: '#ccc', padding: '0.5rem' }}>
-                                    <MoreVertical size={20} />
-                                </Link>
-                            </div>
-                        );
-                    })}
+                    {filteredRoutines.map((routine) => (
+                        <UnifiedItemCard
+                            key={routine.id}
+                            item={routine}
+                            onToggle={handleToggle}
+                        />
+                    ))}
+                    {filteredRoutines.length === 0 && !showCompleted && routines.length > 0 && (
+                        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                            All routines completed for today!
+                        </div>
+                    )}
                 </div>
             )}
         </div>

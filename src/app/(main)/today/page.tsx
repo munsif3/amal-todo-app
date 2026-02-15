@@ -1,11 +1,11 @@
 "use client";
 
 import { useAuth } from "@/lib/firebase/auth-context";
-import { Meeting } from "@/types";
+import { Meeting, Task } from "@/types";
 import { useState, useEffect } from "react";
 import UnifiedItemCard, { UnifiedItem } from "@/components/today/UnifiedItemCard";
 import Loader from "@/components/ui/Loading";
-import { Search } from "lucide-react";
+import { Search, Eye, EyeOff } from "lucide-react";
 import { useRoutineCompletion } from "@/lib/hooks/use-routine-completion";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useRoutines } from "@/lib/hooks/use-routines";
@@ -18,9 +18,11 @@ export default function TodayPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [meetings, setMeetings] = useState<Meeting[]>([]);
     const [loadingMeetings, setLoadingMeetings] = useState(true);
+    const [showCompleted, setShowCompleted] = useState(false);
 
     const {
         activeTasks,
+        finishedTasks,
         loading: tasksLoading,
         changeTaskStatus,
     } = useTasks(user, searchQuery);
@@ -54,6 +56,11 @@ export default function TodayPage() {
     const isFuture = (date: Date | undefined) => {
         if (!date) return false;
         return date > endOfToday;
+    };
+
+    const isCompletedToday = (date: Date | undefined) => {
+        if (!date) return false;
+        return date >= today && date <= endOfToday;
     };
 
     // --- Transform Content into Unified Items ---
@@ -116,10 +123,33 @@ export default function TodayPage() {
     const todayRoutinesItems: UnifiedItem[] = [];
     todaysRoutines.forEach(r => {
         const isCompleted = isRoutineCompletedToday(r);
+        let itemTime = undefined;
+        if (r.time) {
+            const [hours, minutes] = r.time.split(':').map(Number);
+            const date = new Date();
+            date.setHours(hours, minutes, 0, 0);
+            itemTime = date;
+        }
+
+        // Only show separate completed items if showCompleted is true AND it is completed?
+        // OR standard behavior: "Show/Hide Completed" often means HIDING them from the main list if completed.
+        // But for Routines, we implemented "Hide by default, Show if toggled".
+        // Today view currently SHOWS completed routines (checked) mixed in?
+        // Wait, `isCompleted` depends on `isRoutineCompletedToday`.
+        // Let's align with the user request: "add the show hide for completed tasks for today".
+        // This implies they want to toggle visibility of completed items.
+
+        // Revised Logic:
+        // - If !showCompleted AND item is completed -> Hide it.
+        // - If showCompleted -> Show everything.
+
+        if (!showCompleted && isCompleted) return;
+
         todayRoutinesItems.push({
             id: r.id!,
             type: 'routine',
             title: r.title,
+            time: itemTime,
             isCompleted: isCompleted,
             accountId: r.accountId || undefined,
             areaColor: accounts.find(a => a.id === r.accountId)?.color,
@@ -140,10 +170,9 @@ export default function TodayPage() {
             badge = { text: 'No Deadline', variant: 'neutral' };
         } else if (date < today) {
             // Overdue
-            // Calculate difference in days based on midnight to midnight
             const d1 = new Date(today);
             const d2 = new Date(date);
-            d2.setHours(0, 0, 0, 0); // Reset deadline to midnight for day calc
+            d2.setHours(0, 0, 0, 0);
 
             const diffTime = d1.getTime() - d2.getTime();
             const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
@@ -177,6 +206,44 @@ export default function TodayPage() {
         }
     });
 
+    // 4. Completed Tasks (Today Only)
+    const completedTodayItems: UnifiedItem[] = [];
+    if (showCompleted) {
+        finishedTasks.forEach(t => {
+            // Check if completed today
+            const getCompletionDate = (task: Task) => {
+                // Try history first
+                const doneEntries = task.history?.filter((h: any) => h.action === 'status_changed_to_done');
+                if (doneEntries && doneEntries.length > 0) {
+                    // Get latest
+                    const latest = doneEntries.reduce((prev: any, current: any) => {
+                        return (prev.timestamp?.toMillis() || 0) > (current.timestamp?.toMillis() || 0) ? prev : current;
+                    });
+                    return latest.timestamp?.toDate();
+                }
+                // Fallback to updatedAt
+                return task.updatedAt?.toDate();
+            };
+
+            const completionDate = getCompletionDate(t);
+            if (isCompletedToday(completionDate)) {
+                const item: UnifiedItem = {
+                    id: t.id!,
+                    type: 'task',
+                    title: t.title,
+                    subtitle: t.description,
+                    time: t.deadline?.toDate(), // Keep original deadline for sorting context? Or completion time? keeping deadline is standard for "what was due"
+                    isCompleted: true,
+                    accountId: t.accountId || undefined,
+                    areaColor: accounts.find(a => a.id === t.accountId)?.color,
+                    originalItem: t,
+                    badge: undefined
+                };
+                completedTodayItems.push(item);
+            }
+        });
+    }
+
     // --- Sort Lists ---
     const sortItems = (items: UnifiedItem[]) => {
         return items.sort((a, b) => {
@@ -197,7 +264,7 @@ export default function TodayPage() {
         });
     };
 
-    const unifiedToday = sortItems([...todayMeetings, ...todayRoutinesItems, ...todayTasksItems]);
+    const unifiedToday = sortItems([...todayRoutinesItems, ...todayTasksItems, ...completedTodayItems]);
     const unifiedFuture = sortItems([...futureMeetings, ...futureTasksItems]);
 
     const handleToggle = (item: UnifiedItem) => {
@@ -232,7 +299,29 @@ export default function TodayPage() {
             </div>
 
             {/* Header */}
-            <h1 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '1.5rem' }}>Today</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h1 style={{ fontSize: '1.5rem', fontWeight: '800' }}>Today</h1>
+                <button
+                    onClick={() => setShowCompleted(!showCompleted)}
+                    style={{
+                        padding: '0.5rem',
+                        color: showCompleted ? 'var(--primary)' : 'var(--text-secondary)',
+                        backgroundColor: showCompleted ? 'var(--primary-muted)' : 'transparent',
+                        border: '1px solid var(--border)',
+                        borderRadius: '50%',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s ease',
+                        width: '36px',
+                        height: '36px'
+                    }}
+                    title={showCompleted ? "Hide Completed" : "Show Completed"}
+                >
+                    {showCompleted ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+            </div>
 
             {unifiedToday.length === 0 ? (
                 <div style={{ padding: '3rem 1rem', textAlign: 'center', opacity: 0.5 }}>

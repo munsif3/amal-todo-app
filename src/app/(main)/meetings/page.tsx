@@ -3,7 +3,7 @@
 import { useAuth } from "@/lib/firebase/auth-context";
 import { subscribeToMeetings, toggleMeetingCompletion } from "@/lib/firebase/meetings";
 import { Meeting } from "@/types";
-import { Plus, Calendar } from "lucide-react";
+import { Plus, Calendar, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import Loader from "@/components/ui/Loading";
@@ -15,6 +15,8 @@ export default function MeetingsPage() {
     const [meetings, setMeetings] = useState<Meeting[]>([]);
     const [loading, setLoading] = useState(true);
     const { accounts } = useAccounts(user);
+
+    const [showCompleted, setShowCompleted] = useState(false);
 
     useEffect(() => {
         if (!user) return;
@@ -68,6 +70,8 @@ export default function MeetingsPage() {
         badge: getBadge(meeting)
     }));
 
+    const filteredMeetings = unifiedMeetings.filter(m => showCompleted || !m.isCompleted);
+
     const handleToggle = (item: UnifiedItem) => {
         toggleMeetingCompletion(item.id, !item.isCompleted);
     };
@@ -81,18 +85,40 @@ export default function MeetingsPage() {
                 marginBottom: '1.5rem',
             }}>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: '700' }}>Meetings</h2>
-                <Link href="/add?mode=MEETING" style={{
-                    backgroundColor: 'var(--primary)',
-                    color: 'var(--primary-foreground)',
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                }}>
-                    <Plus size={20} />
-                </Link>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <button
+                        onClick={() => setShowCompleted(!showCompleted)}
+                        style={{
+                            padding: '0.5rem',
+                            color: showCompleted ? 'var(--primary)' : 'var(--text-secondary)',
+                            backgroundColor: showCompleted ? 'var(--primary-muted)' : 'transparent',
+                            border: '1px solid var(--border)',
+                            borderRadius: '50%',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.2s ease',
+                            width: '36px',
+                            height: '36px'
+                        }}
+                        title={showCompleted ? "Hide Completed" : "Show Completed"}
+                    >
+                        {showCompleted ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                    <Link href="/new?mode=MEETING" style={{
+                        backgroundColor: 'var(--primary)',
+                        color: 'var(--primary-foreground)',
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}>
+                        <Plus size={20} />
+                    </Link>
+                </div>
             </header>
 
             {loading ? (
@@ -111,13 +137,18 @@ export default function MeetingsPage() {
                 </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {unifiedMeetings.map((item) => (
+                    {filteredMeetings.map((item) => (
                         <UnifiedItemCard
                             key={item.id}
                             item={item}
                             onToggle={handleToggle}
                         />
                     ))}
+                    {filteredMeetings.length === 0 && !showCompleted && meetings.length > 0 && (
+                        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                            All meetings completed!
+                        </div>
+                    )}
                 </div>
             )}
         </div>

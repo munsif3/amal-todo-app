@@ -66,11 +66,16 @@ export default function DashboardPage() {
     const cards = [
         {
             title: "Todo",
-            count: activeTasks.length,
+            count: activeTasks.filter(t => {
+                if (!t.deadline) return true;
+                const today = new Date();
+                today.setHours(23, 59, 59, 999);
+                return t.deadline.toDate() <= today;
+            }).length + todaysRoutines.length,
             icon: CheckSquare,
             href: "/today", // Or filtering for just tasks
             color: "var(--primary)",
-            description: "Active tasks for today"
+            description: "Active tasks & routines"
         },
         {
             title: "Routine",
