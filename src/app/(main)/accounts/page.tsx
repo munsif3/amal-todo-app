@@ -27,7 +27,8 @@ export default function AccountsPage() {
     }, [user]);
 
     const handleEdit = (account: Account) => {
-        router.push(`/accounts/edit?id=${account.id}`);
+        // router.push(`/accounts/edit?id=${account.id}`);
+        router.push(`/area?id=${account.id}`);
     };
 
     const handleDelete = async (account: Account) => {

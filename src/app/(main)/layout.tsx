@@ -3,6 +3,7 @@
 import { useAuth } from "@/lib/firebase/auth-context";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import Link from "next/link";
 import BottomNav from "@/components/shared/BottomNav";
 import Sidebar from "@/components/shared/Sidebar";
 import Loading from "@/components/ui/Loading";
@@ -40,7 +41,9 @@ export default function MainLayout({
                     justifyContent: 'space-between',
                     alignItems: 'center'
                 }}>
-                    <h1 style={{ fontSize: '1.25rem', fontWeight: '700', letterSpacing: '-0.02em' }}>AMAL</h1>
+                    <Link href="/dashboard" style={{ textDecoration: 'none', color: 'inherit', display: 'block', cursor: 'pointer' }}>
+                        <h1 style={{ fontSize: '1.25rem', fontWeight: '700', letterSpacing: '-0.02em', margin: 0 }}>AMAL</h1>
+                    </Link>
                     <ThemeToggle />
                 </header>
                 <main style={{ padding: '0 1.5rem' }}>

@@ -8,9 +8,7 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 const navItems = [
     { label: "Today", href: "/today", icon: CheckCircle2 },
     { label: "Areas", href: "/accounts", icon: LayoutGrid },
-    { label: "Routines", href: "/routines", icon: Repeat },
     { label: "Library", href: "/notes", icon: Book },
-    { label: "Meetings", href: "/meetings", icon: Calendar },
     { label: "Profile", href: "/profile", icon: User },
 ];
 
@@ -32,10 +30,12 @@ export default function Sidebar() {
             gap: '2rem'
         }}>
             <div style={{ paddingLeft: '0.5rem' }}>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: '800', letterSpacing: '-0.02em' }}>AMAL</h1>
+                <Link href="/dashboard" style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <h1 style={{ fontSize: '1.5rem', fontWeight: '800', letterSpacing: '-0.02em', cursor: 'pointer' }}>AMAL</h1>
+                </Link>
             </div>
 
-            <Link href="/tasks/new" style={{
+            <Link href="/new" style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -49,7 +49,7 @@ export default function Sidebar() {
                 marginTop: '1rem',
             }}>
                 <Plus size={20} />
-                <span>New Task</span>
+                <span>New Item</span>
             </Link>
 
             <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

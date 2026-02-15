@@ -6,11 +6,9 @@ import { Book, Calendar, CheckCircle2, LayoutGrid, Plus, Repeat, User } from "lu
 
 const navItems = [
     { label: "Today", href: "/today", icon: CheckCircle2 },
-    { label: "Areas", href: "/accounts", icon: LayoutGrid },
+    { label: "Home", href: "/dashboard", icon: LayoutGrid }, // Using LayoutGrid for Dashboard now
+    { label: "Add", href: "/add", icon: Plus, isAction: true },
     { label: "Library", href: "/notes", icon: Book },
-    { label: "Add", href: "/tasks/new", icon: Plus, isAction: true },
-    { label: "Routines", href: "/routines", icon: Repeat },
-    { label: "Meetings", href: "/meetings", icon: Calendar },
     { label: "Profile", href: "/profile", icon: User },
 ];
 
@@ -24,7 +22,7 @@ export default function BottomNav() {
             left: 0,
             right: 0,
             height: '80px',
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            backgroundColor: 'var(--card-bg)', // Use themed background
             backdropFilter: 'blur(10px)',
             borderTop: '1px solid var(--border)',
             display: 'flex',
@@ -51,7 +49,7 @@ export default function BottomNav() {
                                 display: 'flex',
                                 justifyContent: 'center',
                                 alignItems: 'center',
-                                color: 'white',
+                                color: 'var(--primary-foreground)', // Ensure correct contrast
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                                 marginBottom: '10px'
                             }}>
@@ -70,7 +68,7 @@ export default function BottomNav() {
                             flexDirection: 'column',
                             alignItems: 'center',
                             gap: '4px',
-                            color: isActive ? 'var(--primary)' : 'var(--border)',
+                            color: isActive ? 'var(--primary)' : 'var(--muted-foreground)', // Better contrast for inactive
                             transition: 'var(--transition-ease)',
                         }}
                     >

@@ -40,7 +40,7 @@ export default function NoteCard({ note, onDelete, onPin }: NoteCardProps) {
             height: '100%'
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Link href={`/notes/edit?id=${note.id}`} style={{ textDecoration: 'none', flex: 1 }}>
+                <Link href={`/edit?type=note&id=${note.id}`} style={{ textDecoration: 'none', flex: 1 }}>
                     <h3 style={{
                         fontSize: '1rem',
                         fontWeight: '600',
@@ -104,7 +104,7 @@ export default function NoteCard({ note, onDelete, onPin }: NoteCardProps) {
                         <Pin size={16} fill={note.isPinned ? "var(--foreground)" : "none"} />
                     </button>
 
-                    <Link href={`/notes/edit?id=${note.id}`}>
+                    <Link href={`/edit?type=note&id=${note.id}`}>
                         <button style={{
                             padding: '0.25rem',
                             opacity: 0.5,

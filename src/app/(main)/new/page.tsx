@@ -1,0 +1,33 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { X } from "lucide-react";
+import UniversalItemForm from "@/components/universal/UniversalItemForm";
+
+export default function NewItemPage() {
+    const router = useRouter();
+
+    const handleClose = () => {
+        router.back();
+    };
+
+    const handleSuccess = () => {
+        router.push("/today"); // Or back to wherever they were
+    };
+
+    return (
+        <div style={{ paddingTop: '1rem', paddingBottom: '5rem' }}>
+            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: '700' }}>New Item</h2>
+                <button onClick={handleClose} style={{ opacity: 0.5, padding: '0.5rem' }}>
+                    <X />
+                </button>
+            </header>
+
+            <UniversalItemForm
+                onClose={handleClose}
+                onSuccess={handleSuccess}
+            />
+        </div>
+    );
+}

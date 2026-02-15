@@ -43,7 +43,7 @@ export interface Account {
 export interface Meeting {
     id: string;
     ownerId: string;
-    accountId?: string;
+    accountId?: string | null;
     title: string;
     startTime: Timestamp;
     notes: {
@@ -62,9 +62,10 @@ export interface Meeting {
 export interface Routine {
     id: string;
     ownerId: string;
-    accountId?: string;
+    accountId?: string | null;
     title: string;
     schedule: "daily" | "weekly" | "custom" | "monthly";
+    time?: string; // HH:mm format (optional)
     type: 'fixed' | 'flexible';
     isShared: boolean;
     days?: number[]; // 0 = Sunday, 1 = Monday, etc.

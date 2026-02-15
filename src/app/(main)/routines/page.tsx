@@ -199,7 +199,7 @@ export default function RoutinesPage() {
                                     </div>
                                 </div>
 
-                                <Link href={`/routines/edit?id=${routine.id}`} style={{ color: '#ccc', padding: '0.5rem' }}>
+                                <Link href={`/edit?type=routine&id=${routine.id}`} style={{ color: '#ccc', padding: '0.5rem' }}>
                                     <MoreVertical size={20} />
                                 </Link>
                             </div>

@@ -1,46 +1,146 @@
 "use client";
 
-import { Reorder } from "framer-motion";
 import { useAuth } from "@/lib/firebase/auth-context";
-import { Task, Account, Routine } from "@/types";
-import { useState } from "react";
-import TaskCard from "@/components/today/TaskCard";
-import DraggableTaskCard from "@/components/today/DraggableTaskCard";
+import { Task, Routine, Meeting } from "@/types";
+import { useState, useEffect } from "react";
+import UnifiedItemCard, { UnifiedItem } from "@/components/today/UnifiedItemCard";
 import Loader from "@/components/ui/Loading";
-import { Check, Search } from "lucide-react";
-
+import { Search } from "lucide-react";
 import { useRoutineCompletion } from "@/lib/hooks/use-routine-completion";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useRoutines } from "@/lib/hooks/use-routines";
 import { useAccounts } from "@/lib/hooks/use-accounts";
+import { subscribeToMeetings } from "@/lib/firebase/meetings";
 
 export default function TodayPage() {
     const { user } = useAuth();
     const [searchQuery, setSearchQuery] = useState("");
+    const [meetings, setMeetings] = useState<Meeting[]>([]);
+    const [loadingMeetings, setLoadingMeetings] = useState(true);
 
     const {
         activeTasks,
         snoozedTasks,
         finishedTasks,
         loading: tasksLoading,
-        reorderTasks,
         changeTaskStatus,
         taskStatusMap
     } = useTasks(user, searchQuery);
 
     const { todaysRoutines, loading: routinesLoading } = useRoutines(user, searchQuery);
     const { accounts, loading: accountsLoading } = useAccounts(user);
-
     const { isRoutineCompletedToday, toggleCompletion } = useRoutineCompletion(user);
 
-    const isLoading = tasksLoading || routinesLoading || accountsLoading;
+    useEffect(() => {
+        if (!user) return;
+        const unsubscribe = subscribeToMeetings(user.uid, (data) => {
+            // Filter meetings for today + future? Or just all? 
+            // For now, let's just take all, but ideally we filter for "Today" in memory or query
+            // Simple "Today" filter:
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            const todaysMeetings = data.filter(m => {
+                if (!m.startTime) return false;
+                const date = m.startTime.toDate();
+                return date >= today && date < tomorrow;
+            });
+            setMeetings(todaysMeetings);
+            setLoadingMeetings(false);
+        });
+        return () => unsubscribe();
+    }, [user]);
+
+    const isLoading = tasksLoading || routinesLoading || accountsLoading || loadingMeetings;
 
     if (isLoading) {
         return <Loader fullScreen={false} className="py-8" />;
     }
 
+    // Transform Data into UnifiedItems
+    const unifiedItems: UnifiedItem[] = [];
+
+    // 1. Meetings
+    meetings.forEach(m => {
+        unifiedItems.push({
+            id: m.id!,
+            type: 'meeting',
+            title: m.title,
+            subtitle: m.notes?.before || "No notes",
+            time: m.startTime?.toDate(),
+            isCompleted: false, // Meetings don't strictly have completion state in this model yet
+            accountId: m.accountId || undefined,
+            areaColor: accounts.find(a => a.id === m.accountId)?.color,
+            originalItem: m
+        });
+    });
+
+    // 2. Routines (Today's)
+    todaysRoutines.forEach(r => {
+        const isCompleted = isRoutineCompletedToday(r);
+        unifiedItems.push({
+            id: r.id!,
+            type: 'routine',
+            title: r.title,
+            isCompleted: isCompleted,
+            accountId: r.accountId || undefined,
+            areaColor: accounts.find(a => a.id === r.accountId)?.color,
+            originalItem: r
+        });
+    });
+
+    // 3. Active Tasks
+    activeTasks.forEach(t => {
+        unifiedItems.push({
+            id: t.id!,
+            type: 'task',
+            title: t.title,
+            subtitle: t.description,
+            time: t.deadline?.toDate(),
+            isCompleted: false,
+            accountId: t.accountId || undefined,
+            areaColor: accounts.find(a => a.id === t.accountId)?.color,
+            originalItem: t
+        });
+    });
+
+    // Sort Unified Stream
+    // P1: Items with Time (Earliest first)
+    // P2: Routines (Incomplete first)
+    // P3: Tasks (In order they came from useTasks)
+    unifiedItems.sort((a, b) => {
+        // Completion pushes to bottom
+        if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;
+
+        // If both have time, compare time
+        if (a.time && b.time) return a.time.getTime() - b.time.getTime();
+
+        // If one has time, it comes first
+        if (a.time) return -1;
+        if (b.time) return 1;
+
+        // If neither has time, prioritize type: Routine -> Task
+        // (Assuming you want to do habits before general tasks, or vice versa. Let's do Routine first)
+        const typePriority = { meeting: 0, routine: 1, task: 2 };
+        if (typePriority[a.type] !== typePriority[b.type]) {
+            return typePriority[a.type] - typePriority[b.type];
+        }
+
+        return 0; // Keep original order otherwise
+    });
+
+    const handleToggle = (item: UnifiedItem) => {
+        if (item.type === 'task') {
+            changeTaskStatus(item.id, item.isCompleted ? 'next' : 'done');
+        } else if (item.type === 'routine') {
+            toggleCompletion(item.originalItem);
+        }
+    };
+
     return (
-        <div>
+        <div style={{ paddingBottom: '6rem' }}>
             {/* Search Bar */}
             <div style={{ position: 'relative', marginBottom: '2rem' }}>
                 <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }} />
@@ -60,141 +160,29 @@ export default function TodayPage() {
                 />
             </div>
 
-            {todaysRoutines.length > 0 && (
-                <section style={{ marginBottom: '2rem' }}>
-                    <h2 style={{ fontSize: '0.875rem', color: 'var(--foreground)', opacity: 0.4, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1rem' }}>
-                        Routines
-                    </h2>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {todaysRoutines.map(routine => {
-                            const isCompleted = isRoutineCompletedToday(routine);
-                            const areaColor = routine.accountId ? accounts.find(a => a.id === routine.accountId)?.color : undefined;
+            {/* Header / Date or Greeting? */}
+            <h1 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '1.5rem' }}>Today</h1>
 
-                            return (
-                                <div key={routine.id} style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    backgroundColor: 'white',
-                                    padding: '0.75rem 1rem',
-                                    borderRadius: '12px',
-                                    border: '1px solid var(--border)',
-                                    borderLeft: areaColor ? `4px solid ${areaColor}` : '1px solid var(--border)',
-                                    opacity: isCompleted ? 0.6 : 1,
-                                    transition: 'all 0.2s ease'
-                                }}>
-                                    <button
-                                        onClick={() => toggleCompletion(routine)}
-                                        style={{
-                                            width: '20px',
-                                            height: '20px',
-                                            borderRadius: '50%',
-                                            border: `2px solid ${isCompleted ? 'var(--primary)' : '#ddd'}`,
-                                            backgroundColor: isCompleted ? 'var(--primary)' : 'transparent',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            color: 'white',
-                                            marginRight: '0.75rem',
-                                            cursor: 'pointer',
-                                            flexShrink: 0
-                                        }}
-                                    >
-                                        {isCompleted && <Check size={12} strokeWidth={4} />}
-                                    </button>
-                                    <span style={{
-                                        fontSize: '0.9375rem',
-                                        fontWeight: '500',
-                                        textDecoration: isCompleted ? 'line-through' : 'none',
-                                        color: isCompleted ? '#999' : 'var(--foreground)'
-                                    }}>
-                                        {routine.title}
-                                    </span>
-                                    {routine.schedule === 'monthly' && (
-                                        <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: '#888', backgroundColor: '#f5f5f5', padding: '2px 6px', borderRadius: '4px' }}>
-                                            Monthly
-                                        </span>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </section>
-            )}
-
-            <section style={{ marginBottom: '2.5rem' }}>
-                <h2 style={{ fontSize: '0.875rem', color: 'var(--foreground)', opacity: 0.4, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1rem' }}>
-                    Tomorrow belongs to those who prepare
-                </h2>
-
-                {activeTasks.length === 0 ? (
-                    <div style={{
-                        padding: '3rem 1rem',
-                        textAlign: 'center',
-                        backgroundColor: 'rgba(0,0,0,0.02)',
-                        borderRadius: 'var(--radius)',
-                        border: '1px dashed var(--border)'
-                    }}>
-                        <p style={{ opacity: 0.5 }}>Your slate is clean.</p>
-                    </div>
-                ) : (
-                    <Reorder.Group
-                        axis="y"
-                        values={activeTasks}
-                        onReorder={reorderTasks}
-                        style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', listStyle: 'none', padding: 0 }}
-                    >
-                        {activeTasks.map(task => {
-                            const blockedBy = task.dependencies || [];
-                            const isBlocked = blockedBy.some(depId => {
-                                const status = taskStatusMap.get(depId);
-                                return status && status !== 'done';
-                            });
-
-                            return (
-                                <DraggableTaskCard
-                                    key={task.id}
-                                    task={task}
-                                    areaColor={task.accountId ? accounts.find(a => a.id === task.accountId)?.color : undefined}
-                                    onStatusChange={(status) => changeTaskStatus(task.id, status)}
-                                    isBlocked={isBlocked}
-                                />
-                            );
-                        })}
-                    </Reorder.Group>
-                )}
-            </section>
-
-            {snoozedTasks.length > 0 && (
-                <section style={{ marginBottom: '2.5rem', opacity: 0.8 }}>
-                    <h2 style={{ fontSize: '0.875rem', color: 'var(--foreground)', opacity: 0.4, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1rem' }}>
-                        Snoozed / Later
-                    </h2>
-                    {snoozedTasks.map(task => (
-                        <TaskCard
-                            key={task.id}
-                            task={task}
-                            areaColor={task.accountId ? accounts.find(a => a.id === task.accountId)?.color : undefined}
-                            onStatusChange={(status) => changeTaskStatus(task.id, status)}
+            {unifiedItems.length === 0 ? (
+                <div style={{ padding: '3rem 1rem', textAlign: 'center', opacity: 0.5 }}>
+                    <p>Your day is clear.</p>
+                </div>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {unifiedItems.map(item => (
+                        <UnifiedItemCard
+                            key={`${item.type}-${item.id}`}
+                            item={item}
+                            onToggle={handleToggle}
+                            isBlocked={false} // TODO: Re-integrate dependency logic
                         />
                     ))}
-                </section>
+                </div>
             )}
 
-            {finishedTasks.length > 0 && (
-                <section style={{ opacity: 0.6 }}>
-                    <h2 style={{ fontSize: '0.875rem', color: 'var(--foreground)', opacity: 0.4, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1rem' }}>
-                        Completed
-                    </h2>
-                    {finishedTasks.map(task => (
-                        <TaskCard
-                            key={task.id}
-                            task={task}
-                            areaColor={task.accountId ? accounts.find(a => a.id === task.accountId)?.color : undefined}
-                            onStatusChange={(status) => changeTaskStatus(task.id, status)}
-                        />
-                    ))}
-                </section>
-            )}
+            {/* Completed Section (optional, maybe specific toggler?) 
+                Currently mixed into bottom because of sort logic.
+            */}
         </div>
     );
 }

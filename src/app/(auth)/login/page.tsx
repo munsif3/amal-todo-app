@@ -33,7 +33,7 @@ export default function LoginPage() {
                 onClick={loginWithGoogle}
                 style={{
                     backgroundColor: 'var(--primary)',
-                    color: 'white',
+                    color: 'var(--primary-foreground)',
                     padding: '0.8rem 2rem',
                     borderRadius: 'var(--radius)',
                     fontSize: '1rem',
@@ -41,7 +41,9 @@ export default function LoginPage() {
                     transition: 'var(--transition-ease)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.5rem'
+                    gap: '0.5rem',
+                    cursor: 'pointer',
+                    border: 'none',
                 }}
             >
                 Sign in with Google

@@ -33,7 +33,7 @@ export default function MeetingsPage() {
                 marginBottom: '1.5rem',
             }}>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: '700' }}>Meetings</h2>
-                <Link href="/meetings/edit?id=new" style={{
+                <Link href="/add?mode=MEETING" style={{
                     backgroundColor: 'var(--primary)',
                     color: 'var(--primary-foreground)',
                     width: '36px',
@@ -67,7 +67,7 @@ export default function MeetingsPage() {
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {meetings.map((meeting) => (
-                        <Link href={`/meetings/edit?id=${meeting.id}`} key={meeting.id} style={{
+                        <Link href={`/edit?type=meeting&id=${meeting.id}`} key={meeting.id} style={{
                             display: 'block',
                             backgroundColor: 'var(--card-bg)',
                             padding: '1rem',
