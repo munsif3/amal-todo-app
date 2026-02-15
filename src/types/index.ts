@@ -57,6 +57,8 @@ export interface Meeting {
         text: string;
         completed: boolean;
     }[];
+    isCompleted: boolean;
+    updatedAt: Timestamp;
 }
 
 export interface Routine {
@@ -95,8 +97,8 @@ export type UpdateTaskInput = Partial<Omit<Task, "id" | "ownerId" | "createdAt" 
 export type CreateAccountInput = Partial<Omit<Account, "id" | "ownerId" | "createdAt" | "status">>;
 export type UpdateAccountInput = Partial<Omit<Account, "id" | "ownerId" | "createdAt">>;
 
-export type CreateMeetingInput = Partial<Omit<Meeting, "id" | "ownerId">>;
-export type UpdateMeetingInput = Partial<Omit<Meeting, "id" | "ownerId">>;
+export type CreateMeetingInput = Partial<Omit<Meeting, "id" | "ownerId" | "updatedAt">>;
+export type UpdateMeetingInput = Partial<Omit<Meeting, "id" | "ownerId" | "updatedAt">>;
 
 export type CreateRoutineInput = Partial<Omit<Routine, "id" | "ownerId" | "completionLog">>;
 export type UpdateRoutineInput = Partial<Omit<Routine, "id" | "ownerId">>;

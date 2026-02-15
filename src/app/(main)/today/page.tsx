@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/lib/firebase/auth-context";
-import { Task, Routine, Meeting } from "@/types";
+import { Meeting } from "@/types";
 import { useState, useEffect } from "react";
 import UnifiedItemCard, { UnifiedItem } from "@/components/today/UnifiedItemCard";
 import Loader from "@/components/ui/Loading";
@@ -10,7 +10,8 @@ import { useRoutineCompletion } from "@/lib/hooks/use-routine-completion";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useRoutines } from "@/lib/hooks/use-routines";
 import { useAccounts } from "@/lib/hooks/use-accounts";
-import { subscribeToMeetings } from "@/lib/firebase/meetings";
+import { subscribeToMeetings, toggleMeetingCompletion } from "@/lib/firebase/meetings";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 
 export default function TodayPage() {
     const { user } = useAuth();
@@ -20,11 +21,8 @@ export default function TodayPage() {
 
     const {
         activeTasks,
-        snoozedTasks,
-        finishedTasks,
         loading: tasksLoading,
         changeTaskStatus,
-        taskStatusMap
     } = useTasks(user, searchQuery);
 
     const { todaysRoutines, loading: routinesLoading } = useRoutines(user, searchQuery);
@@ -34,20 +32,8 @@ export default function TodayPage() {
     useEffect(() => {
         if (!user) return;
         const unsubscribe = subscribeToMeetings(user.uid, (data) => {
-            // Filter meetings for today + future? Or just all? 
-            // For now, let's just take all, but ideally we filter for "Today" in memory or query
-            // Simple "Today" filter:
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-
-            const todaysMeetings = data.filter(m => {
-                if (!m.startTime) return false;
-                const date = m.startTime.toDate();
-                return date >= today && date < tomorrow;
-            });
-            setMeetings(todaysMeetings);
+            // Fetch all meetings, then we can filter in-memory for Today vs Future
+            setMeetings(data);
             setLoadingMeetings(false);
         });
         return () => unsubscribe();
@@ -59,28 +45,78 @@ export default function TodayPage() {
         return <Loader fullScreen={false} className="py-8" />;
     }
 
-    // Transform Data into UnifiedItems
-    const unifiedItems: UnifiedItem[] = [];
+    // --- Helpers for Dates ---
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endOfToday = new Date(today);
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const isFuture = (date: Date | undefined) => {
+        if (!date) return false;
+        return date > endOfToday;
+    };
+
+    // --- Transform Content into Unified Items ---
 
     // 1. Meetings
+    const todayMeetings: UnifiedItem[] = [];
+    const futureMeetings: UnifiedItem[] = [];
+
     meetings.forEach(m => {
-        unifiedItems.push({
+        const date = m.startTime?.toDate();
+        let badge: UnifiedItem['badge'] = undefined;
+
+        const now = new Date();
+        if (date && date < now) {
+            const d1 = new Date(today);
+            const d2 = new Date(date);
+            d2.setHours(0, 0, 0, 0);
+
+            const diffTime = d1.getTime() - d2.getTime();
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays > 0) {
+                badge = {
+                    text: `Overdue by ${diffDays} day${diffDays > 1 ? 's' : ''}`,
+                    variant: 'destructive'
+                };
+            } else {
+                badge = {
+                    text: `Overdue`,
+                    variant: 'destructive'
+                };
+            }
+        }
+
+        const item: UnifiedItem = {
             id: m.id!,
             type: 'meeting',
             title: m.title,
             subtitle: m.notes?.before || "No notes",
-            time: m.startTime?.toDate(),
-            isCompleted: false, // Meetings don't strictly have completion state in this model yet
+            time: date,
+            isCompleted: m.isCompleted || false,
             accountId: m.accountId || undefined,
             areaColor: accounts.find(a => a.id === m.accountId)?.color,
-            originalItem: m
-        });
+            originalItem: m,
+            badge: badge
+        };
+
+        if (isFuture(date)) {
+            futureMeetings.push(item);
+        } else {
+            // Past (Overdue) + Today
+            // We show all past meetings as "Overdue" or just "Past" items in the main list
+            if (date && date <= endOfToday) {
+                todayMeetings.push(item);
+            }
+        }
     });
 
-    // 2. Routines (Today's)
+    // 2. Routines (Always "Today" as useRoutines returns today's routines)
+    const todayRoutinesItems: UnifiedItem[] = [];
     todaysRoutines.forEach(r => {
         const isCompleted = isRoutineCompletedToday(r);
-        unifiedItems.push({
+        todayRoutinesItems.push({
             id: r.id!,
             type: 'routine',
             title: r.title,
@@ -92,50 +128,85 @@ export default function TodayPage() {
     });
 
     // 3. Active Tasks
+    // Split into Today (includes Overdue/No Date) and Future
+    const todayTasksItems: UnifiedItem[] = [];
+    const futureTasksItems: UnifiedItem[] = [];
+
     activeTasks.forEach(t => {
-        unifiedItems.push({
+        const date = t.deadline?.toDate();
+        let badge: UnifiedItem['badge'] = undefined;
+
+        if (!date) {
+            badge = { text: 'No Deadline', variant: 'neutral' };
+        } else if (date < today) {
+            // Overdue
+            // Calculate difference in days based on midnight to midnight
+            const d1 = new Date(today);
+            const d2 = new Date(date);
+            d2.setHours(0, 0, 0, 0); // Reset deadline to midnight for day calc
+
+            const diffTime = d1.getTime() - d2.getTime();
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays > 0) {
+                badge = {
+                    text: `Overdue by ${diffDays} day${diffDays > 1 ? 's' : ''}`,
+                    variant: 'destructive'
+                };
+            }
+        }
+
+        const item: UnifiedItem = {
             id: t.id!,
             type: 'task',
             title: t.title,
             subtitle: t.description,
-            time: t.deadline?.toDate(),
+            time: date,
             isCompleted: false,
             accountId: t.accountId || undefined,
             areaColor: accounts.find(a => a.id === t.accountId)?.color,
-            originalItem: t
-        });
-    });
+            originalItem: t,
+            badge: badge
+        };
 
-    // Sort Unified Stream
-    // P1: Items with Time (Earliest first)
-    // P2: Routines (Incomplete first)
-    // P3: Tasks (In order they came from useTasks)
-    unifiedItems.sort((a, b) => {
-        // Completion pushes to bottom
-        if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;
-
-        // If both have time, compare time
-        if (a.time && b.time) return a.time.getTime() - b.time.getTime();
-
-        // If one has time, it comes first
-        if (a.time) return -1;
-        if (b.time) return 1;
-
-        // If neither has time, prioritize type: Routine -> Task
-        // (Assuming you want to do habits before general tasks, or vice versa. Let's do Routine first)
-        const typePriority = { meeting: 0, routine: 1, task: 2 };
-        if (typePriority[a.type] !== typePriority[b.type]) {
-            return typePriority[a.type] - typePriority[b.type];
+        if (isFuture(date)) {
+            futureTasksItems.push(item);
+        } else {
+            // Today, Overdue, or No Date
+            todayTasksItems.push(item);
         }
-
-        return 0; // Keep original order otherwise
     });
+
+    // --- Sort Lists ---
+    const sortItems = (items: UnifiedItem[]) => {
+        return items.sort((a, b) => {
+            // Completion pushes to bottom
+            if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;
+
+            // Time comparison
+            if (a.time && b.time) return a.time.getTime() - b.time.getTime();
+            if (a.time) return -1;
+            if (b.time) return 1;
+
+            // Type priority: Routine -> Meeting -> Task
+            const typePriority = { routine: 0, meeting: 1, task: 2 };
+            if (typePriority[a.type] !== typePriority[b.type]) {
+                return typePriority[a.type] - typePriority[b.type];
+            }
+            return 0;
+        });
+    };
+
+    const unifiedToday = sortItems([...todayMeetings, ...todayRoutinesItems, ...todayTasksItems]);
+    const unifiedFuture = sortItems([...futureMeetings, ...futureTasksItems]);
 
     const handleToggle = (item: UnifiedItem) => {
         if (item.type === 'task') {
             changeTaskStatus(item.id, item.isCompleted ? 'next' : 'done');
         } else if (item.type === 'routine') {
             toggleCompletion(item.originalItem);
+        } else if (item.type === 'meeting') {
+            toggleMeetingCompletion(item.id, !item.isCompleted);
         }
     };
 
@@ -160,29 +231,39 @@ export default function TodayPage() {
                 />
             </div>
 
-            {/* Header / Date or Greeting? */}
+            {/* Header */}
             <h1 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '1.5rem' }}>Today</h1>
 
-            {unifiedItems.length === 0 ? (
+            {unifiedToday.length === 0 ? (
                 <div style={{ padding: '3rem 1rem', textAlign: 'center', opacity: 0.5 }}>
                     <p>Your day is clear.</p>
                 </div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {unifiedItems.map(item => (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '2rem' }}>
+                    {unifiedToday.map(item => (
                         <UnifiedItemCard
                             key={`${item.type}-${item.id}`}
                             item={item}
                             onToggle={handleToggle}
-                            isBlocked={false} // TODO: Re-integrate dependency logic
                         />
                     ))}
                 </div>
             )}
 
-            {/* Completed Section (optional, maybe specific toggler?) 
-                Currently mixed into bottom because of sort logic.
-            */}
+            {/* Future Section */}
+            {unifiedFuture.length > 0 && (
+                <CollapsibleSection title={`Upcoming (${unifiedFuture.length})`}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {unifiedFuture.map(item => (
+                            <UnifiedItemCard
+                                key={`${item.type}-${item.id}`}
+                                item={item}
+                                onToggle={handleToggle}
+                            />
+                        ))}
+                    </div>
+                </CollapsibleSection>
+            )}
         </div>
     );
 }

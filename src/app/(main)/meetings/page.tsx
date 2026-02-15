@@ -1,17 +1,20 @@
 "use client";
 
 import { useAuth } from "@/lib/firebase/auth-context";
-import { subscribeToMeetings } from "@/lib/firebase/meetings";
+import { subscribeToMeetings, toggleMeetingCompletion } from "@/lib/firebase/meetings";
 import { Meeting } from "@/types";
-import { Plus, Calendar, Clock } from "lucide-react";
+import { Plus, Calendar } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import Loader from "@/components/ui/Loading";
+import UnifiedItemCard, { UnifiedItem } from "@/components/today/UnifiedItemCard";
+import { useAccounts } from "@/lib/hooks/use-accounts";
 
 export default function MeetingsPage() {
     const { user } = useAuth();
     const [meetings, setMeetings] = useState<Meeting[]>([]);
     const [loading, setLoading] = useState(true);
+    const { accounts } = useAccounts(user);
 
     useEffect(() => {
         if (!user) return;
@@ -22,7 +25,52 @@ export default function MeetingsPage() {
         return () => unsubscribe();
     }, [user]);
 
-    // Group meetings? For now just list.
+    // Helpers
+    const getBadge = (meeting: Meeting): UnifiedItem['badge'] => {
+        if (meeting.isCompleted) return undefined;
+        const date = meeting.startTime?.toDate();
+        const now = new Date();
+        if (date && date < now) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const mDate = new Date(date);
+            mDate.setHours(0, 0, 0, 0);
+
+            const diffTime = today.getTime() - mDate.getTime();
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays > 0) {
+                return {
+                    text: `Overdue by ${diffDays} day${diffDays > 1 ? 's' : ''}`,
+                    variant: 'destructive'
+                };
+            } else {
+                return {
+                    text: 'Overdue',
+                    variant: 'destructive'
+                };
+            }
+        }
+        return undefined;
+    };
+
+    const unifiedMeetings: UnifiedItem[] = meetings.map(meeting => ({
+        id: meeting.id!,
+        type: 'meeting',
+        title: meeting.title,
+        subtitle: meeting.notes?.before || "No notes",
+        time: meeting.startTime?.toDate(),
+        isCompleted: meeting.isCompleted || false,
+        accountId: meeting.accountId || undefined,
+        areaColor: accounts.find(a => a.id === meeting.accountId)?.color,
+        originalItem: meeting,
+        badge: getBadge(meeting)
+    }));
+
+    const handleToggle = (item: UnifiedItem) => {
+        toggleMeetingCompletion(item.id, !item.isCompleted);
+    };
 
     return (
         <div style={{ paddingBottom: '80px' }}>
@@ -47,9 +95,6 @@ export default function MeetingsPage() {
                 </Link>
             </header>
 
-
-
-
             {loading ? (
                 <Loader fullScreen={false} className="py-8" />
             ) : meetings.length === 0 ? (
@@ -65,43 +110,13 @@ export default function MeetingsPage() {
                     <p style={{ fontSize: '0.875rem' }}>Plan your first session to stay on track.</p>
                 </div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {meetings.map((meeting) => (
-                        <Link href={`/edit?type=meeting&id=${meeting.id}`} key={meeting.id} style={{
-                            display: 'block',
-                            backgroundColor: 'var(--card-bg)',
-                            padding: '1rem',
-                            borderRadius: '12px',
-                            border: '1px solid var(--border)',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                                <div style={{
-                                    width: '8px',
-                                    height: '8px',
-                                    borderRadius: '50%',
-                                    backgroundColor: 'var(--primary)'
-                                }} />
-                                <h3 style={{ fontWeight: '600' }}>{meeting.title}</h3>
-                            </div>
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '1rem',
-                                fontSize: '0.875rem',
-                                color: 'var(--text-secondary)'
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                    <Clock size={14} />
-                                    <span>
-                                        {meeting.startTime?.toDate().toLocaleDateString()} {meeting.startTime?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </span>
-                                </div>
-                                {meeting.checklist?.length > 0 && (
-                                    <span>{meeting.checklist.filter(i => i.completed).length}/{meeting.checklist.length} items</span>
-                                )}
-                            </div>
-                        </Link>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {unifiedMeetings.map((item) => (
+                        <UnifiedItemCard
+                            key={item.id}
+                            item={item}
+                            onToggle={handleToggle}
+                        />
                     ))}
                 </div>
             )}

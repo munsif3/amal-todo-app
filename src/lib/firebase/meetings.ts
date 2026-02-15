@@ -49,6 +49,8 @@ export async function createMeeting(userId: string, meetingData: CreateMeetingIn
         notes: meetingData.notes || { before: '', during: '', after: '' },
         prepTaskIds: meetingData.prepTaskIds || [],
         checklist: meetingData.checklist || [],
+        isCompleted: false,
+        updatedAt: serverTimestamp(),
     };
 
     return addDoc(collection(db, MEETINGS_COLLECTION), newMeeting);
@@ -56,7 +58,18 @@ export async function createMeeting(userId: string, meetingData: CreateMeetingIn
 
 export async function updateMeeting(meetingId: string, data: UpdateMeetingInput) {
     const meetingRef = doc(db, MEETINGS_COLLECTION, meetingId);
-    return updateDoc(meetingRef, data);
+    return updateDoc(meetingRef, {
+        ...data,
+        updatedAt: serverTimestamp()
+    });
+}
+
+export async function toggleMeetingCompletion(meetingId: string, isCompleted: boolean) {
+    const meetingRef = doc(db, MEETINGS_COLLECTION, meetingId);
+    return updateDoc(meetingRef, {
+        isCompleted,
+        updatedAt: serverTimestamp()
+    });
 }
 
 export async function deleteMeeting(meetingId: string) {
