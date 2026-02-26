@@ -7,11 +7,11 @@ import { createTask, updateTask } from "@/lib/firebase/tasks";
 import { createRoutine, updateRoutine } from "@/lib/firebase/routines";
 import { createMeeting, updateMeeting } from "@/lib/firebase/meetings";
 import { createNote, updateNote } from "@/lib/firebase/notes";
-import { Account, TaskStatus } from "@/types";
+import { Account, TaskStatus, Subtask } from "@/types";
 import { Input, Textarea, Button } from "@/components/ui/Form";
 import AreaSelector from "@/components/ui/AreaSelector";
 import { Timestamp } from "firebase/firestore";
-import { Calendar, Repeat, Book, Video, CheckSquare, ArrowLeft } from "lucide-react";
+import { Calendar, Repeat, Book, Video, CheckSquare, ArrowLeft, Plus, X, User } from "lucide-react";
 
 type CaptureMode = 'TASK' | 'ROUTINE' | 'MEETING' | 'NOTE';
 
@@ -42,6 +42,7 @@ export default function UniversalItemForm({
     // Gamification State (Tasks only)
     const [isFrog, setIsFrog] = useState(false);
     const [isTwoMinute, setIsTwoMinute] = useState(false);
+    const [subtasks, setSubtasks] = useState<Subtask[]>([]);
 
     // Specific State
     const [deadline, setDeadline] = useState(() => {
@@ -87,6 +88,7 @@ export default function UniversalItemForm({
             setDescription(initialData.description || "");
             setIsFrog(initialData.isFrog || false);
             setIsTwoMinute(initialData.isTwoMinute || false);
+            setSubtasks(initialData.subtasks || []);
             if (initialData.deadline) {
                 const date = initialData.deadline.toDate();
                 const offset = date.getTimezoneOffset() * 60000;
@@ -123,7 +125,8 @@ export default function UniversalItemForm({
                     accountId: accountId || null,
                     deadline: deadline ? Timestamp.fromDate(new Date(deadline)) : null,
                     isFrog,
-                    isTwoMinute
+                    isTwoMinute,
+                    subtasks
                 };
                 if (itemId) await updateTask(itemId, data);
                 else await createTask(user.uid, { ...data, status: 'next' });
@@ -373,6 +376,73 @@ export default function UniversalItemForm({
                 onChange={(e) => setDescription(e.target.value)}
                 style={{ minHeight: '120px' }}
             />
+
+            {/* Subtasks / Requirements (Tasks Only) */}
+            {mode === 'TASK' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem', backgroundColor: 'var(--bg-subtle)', borderRadius: '8px', borderLeft: '3px solid var(--primary)' }}>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--foreground)' }}>Requirements</h4>
+
+                    {subtasks.map((subtask, index) => (
+                        <div key={subtask.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <input
+                                type="checkbox"
+                                checked={subtask.isCompleted}
+                                onChange={(e) => {
+                                    const newSubtasks = [...subtasks];
+                                    newSubtasks[index].isCompleted = e.target.checked;
+                                    setSubtasks(newSubtasks);
+                                }}
+                                style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer', flexShrink: 0 }}
+                            />
+                            <Input
+                                placeholder="Requirement title"
+                                value={subtask.title}
+                                onChange={(e) => {
+                                    const newSubtasks = [...subtasks];
+                                    newSubtasks[index].title = e.target.value;
+                                    setSubtasks(newSubtasks);
+                                }}
+                                style={{ flex: 1 }}
+                            />
+                            <div style={{ display: 'flex', alignItems: 'center', flex: 1, gap: '0.5rem', background: 'var(--card-bg)', borderRadius: 'var(--radius)', padding: '0 0.5rem', border: '1px solid var(--border)' }}>
+                                <User size={14} style={{ opacity: 0.5, flexShrink: 0 }} />
+                                <input
+                                    type="text"
+                                    placeholder="Assignee (optional)"
+                                    value={subtask.assignee || ''}
+                                    onChange={(e) => {
+                                        const newSubtasks = [...subtasks];
+                                        newSubtasks[index].assignee = e.target.value;
+                                        setSubtasks(newSubtasks);
+                                    }}
+                                    style={{ flex: 1, border: 'none', background: 'transparent', padding: '0.5rem 0', outline: 'none', fontSize: '0.875rem', color: 'var(--foreground)' }}
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const newSubtasks = subtasks.filter((_, i) => i !== index);
+                                    setSubtasks(newSubtasks);
+                                }}
+                                style={{ opacity: 0.5, padding: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer', flexShrink: 0 }}
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+                    ))}
+
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => {
+                            setSubtasks([...subtasks, { id: crypto.randomUUID(), title: '', isCompleted: false }]);
+                        }}
+                        style={{ alignSelf: 'flex-start', display: 'flex', gap: '0.5rem', alignItems: 'center' }}
+                    >
+                        <Plus size={16} /> Add Requirement
+                    </Button>
+                </div>
+            )}
 
             {/* Gamification Toggles (Tasks Only) */}
             {mode === 'TASK' && (

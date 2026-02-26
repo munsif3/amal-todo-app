@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Book, Calendar, CheckCircle2, LayoutGrid, Plus, Repeat, User } from "lucide-react";
+import { Book, Calendar, CheckCircle2, LayoutGrid, Plus, Repeat, User, Archive } from "lucide-react";
 
 const navItems = [
     { label: "Today", href: "/today", icon: CheckCircle2 },
     { label: "Home", href: "/dashboard", icon: LayoutGrid }, // Using LayoutGrid for Dashboard now
-    { label: "Add", href: "/add", icon: Plus, isAction: true },
     { label: "Library", href: "/notes", icon: Book },
+    { label: "Add", href: "/add", icon: Plus, isAction: true },
     { label: "Profile", href: "/profile", icon: User },
 ];
 

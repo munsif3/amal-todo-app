@@ -8,6 +8,13 @@ export interface Reference {
     url?: string;
 }
 
+export interface Subtask {
+    id: string;
+    title: string;
+    isCompleted: boolean;
+    assignee?: string;
+}
+
 export interface Task {
     id: string;
     ownerId: string;
@@ -19,6 +26,7 @@ export interface Task {
     deadline?: Timestamp | null;
     dependencies: string[]; // Task IDs
     references: Reference[];
+    subtasks?: Subtask[];
     history: {
         action: string;
         timestamp: Timestamp;

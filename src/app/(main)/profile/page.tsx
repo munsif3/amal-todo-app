@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/lib/firebase/auth-context";
 import { Button } from "@/components/ui/Form";
-import { LogOut, User, ScrollText, Repeat, Calendar, LayoutGrid } from "lucide-react";
+import { LogOut, User, ScrollText, Repeat, Calendar, LayoutGrid, Archive } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import Link from "next/link";
 
@@ -44,6 +44,13 @@ export default function ProfilePage() {
                     overflow: 'hidden',
                     marginBottom: '2rem'
                 }}>
+                    <Link href="/someday" style={{ textDecoration: 'none', color: 'inherit' }}>
+                        <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer', transition: 'background-color 0.2s' }}>
+                            <Archive size={20} className="text-muted-foreground" />
+                            <span>Someday</span>
+                            <span style={{ marginLeft: 'auto', opacity: 0.3, fontSize: '0.875rem' }}>Deferred</span>
+                        </div>
+                    </Link>
                     <Link href="/logbook" style={{ textDecoration: 'none', color: 'inherit' }}>
                         <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer', transition: 'background-color 0.2s' }}>
                             <ScrollText size={20} className="text-muted-foreground" />

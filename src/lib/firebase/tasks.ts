@@ -105,6 +105,7 @@ export async function createTask(userId: string, taskData: CreateTaskInput) {
         status: taskData.status || "next",
         dependencies: taskData.dependencies || [],
         references: taskData.references || [],
+        subtasks: taskData.subtasks || [],
         history: [
             {
                 action: "created",

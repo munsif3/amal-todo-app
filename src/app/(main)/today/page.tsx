@@ -211,7 +211,11 @@ export default function TodayPage() {
             isFrog: t.isFrog,
             isTwoMinute: t.isTwoMinute,
             originalItem: t,
-            badge: badge
+            badge: badge,
+            subtasksCount: t.subtasks && t.subtasks.length > 0 ? {
+                completed: t.subtasks.filter((s: any) => s.isCompleted).length,
+                total: t.subtasks.length
+            } : undefined
         };
 
         if (isFuture(date)) {
@@ -253,7 +257,11 @@ export default function TodayPage() {
                     accountId: t.accountId || undefined,
                     areaColor: accounts.find(a => a.id === t.accountId)?.color,
                     originalItem: t,
-                    badge: undefined
+                    badge: undefined,
+                    subtasksCount: t.subtasks && t.subtasks.length > 0 ? {
+                        completed: t.subtasks.filter((s: any) => s.isCompleted).length,
+                        total: t.subtasks.length
+                    } : undefined
                 };
                 completedTodayItems.push(item);
             }
@@ -459,80 +467,15 @@ export default function TodayPage() {
             </div>
 
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: '800' }}>Today</h1>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button
-                        onClick={() => setShowOnlyTwoMinute(!showOnlyTwoMinute)}
-                        style={{
-                            padding: '0.5rem 0.75rem',
-                            color: showOnlyTwoMinute ? 'var(--warning, #eab308)' : 'var(--text-secondary)',
-                            backgroundColor: showOnlyTwoMinute ? 'rgba(234, 179, 8, 0.15)' : 'transparent',
-                            border: '1px solid',
-                            borderColor: showOnlyTwoMinute ? 'rgba(234, 179, 8, 0.3)' : 'var(--border)',
-                            borderRadius: '20px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            fontSize: '0.875rem',
-                            fontWeight: '600',
-                            transition: 'all 0.2s ease',
-                        }}
-                        title="Filter 2-Minute Tasks"
-                    >
-                        {showOnlyTwoMinute ? <Zap size={16} /> : <ZapOff size={16} />}
-                        2m
-                    </button>
-                    <button
-                        onClick={() => setIsFocusMode(true)}
-                        style={{
-                            padding: '0.5rem 1rem',
-                            color: 'var(--primary-foreground)',
-                            backgroundColor: 'var(--primary)',
-                            border: 'none',
-                            borderRadius: '20px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            fontSize: '0.875rem',
-                            fontWeight: '600',
-                            transition: 'opacity 0.2s',
-                        }}
-                    >
-                        <Target size={16} />
-                        Focus
-                    </button>
-                    <button
-                        onClick={handleSnoozeAll}
-                        disabled={isSnoozingAll || unifiedToday.filter(i => !i.isCompleted && i.type === 'task').length === 0}
-                        style={{
-                            padding: '0.5rem 1rem',
-                            color: 'var(--text-secondary)',
-                            backgroundColor: 'transparent',
-                            border: '1px solid var(--border)',
-                            borderRadius: '20px',
-                            cursor: isSnoozingAll ? 'wait' : 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            fontSize: '0.875rem',
-                            fontWeight: '600',
-                            transition: 'opacity 0.2s',
-                            opacity: (isSnoozingAll || unifiedToday.filter(i => !i.isCompleted && i.type === 'task').length === 0) ? 0.5 : 1
-                        }}
-                        title="Snooze all incomplete tasks to tomorrow"
-                    >
-                        {isSnoozingAll ? 'Snoozing...' : 'Snooze'}
-                        <ArrowRight size={16} />
-                    </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h1 style={{ fontSize: '2rem', fontWeight: '800', lineHeight: 1, margin: 0 }}>Today</h1>
                     <button
                         onClick={() => setShowCompleted(!showCompleted)}
                         style={{
                             padding: '0.5rem',
                             color: showCompleted ? 'var(--primary)' : 'var(--text-secondary)',
-                            backgroundColor: showCompleted ? 'var(--primary-muted)' : 'transparent',
+                            backgroundColor: showCompleted ? 'var(--primary-muted, rgba(0,0,0,0.05))' : 'transparent',
                             border: '1px solid var(--border)',
                             borderRadius: '50%',
                             cursor: 'pointer',
@@ -545,7 +488,92 @@ export default function TodayPage() {
                         }}
                         title={showCompleted ? "Hide Completed" : "Show Completed"}
                     >
-                        {showCompleted ? <EyeOff size={20} /> : <Eye size={20} />}
+                        {showCompleted ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                </div>
+
+                {/* Filter / Action Chips (Scrollable on Mobile) */}
+                <div className="hide-scrollbar" style={{
+                    display: 'flex',
+                    gap: '0.5rem',
+                    overflowX: 'auto',
+                    paddingBottom: '0.25rem',
+                    margin: '0 -1rem',
+                    padding: '0 1rem',
+                    WebkitOverflowScrolling: 'touch'
+                }}>
+                    <button
+                        onClick={() => setShowOnlyTwoMinute(!showOnlyTwoMinute)}
+                        style={{
+                            padding: '0.5rem 0.875rem',
+                            color: showOnlyTwoMinute ? 'var(--warning, #eab308)' : 'var(--text-secondary)',
+                            backgroundColor: showOnlyTwoMinute ? 'rgba(234, 179, 8, 0.15)' : 'var(--card-bg)',
+                            border: '1px solid',
+                            borderColor: showOnlyTwoMinute ? 'rgba(234, 179, 8, 0.3)' : 'var(--border)',
+                            borderRadius: '20px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            transition: 'all 0.2s ease',
+                            whiteSpace: 'nowrap',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                        }}
+                        title="Filter 2-Minute Tasks"
+                    >
+                        {showOnlyTwoMinute ? <Zap size={14} /> : <ZapOff size={14} />}
+                        Quick 2m
+                    </button>
+
+                    <button
+                        onClick={() => setIsFocusMode(true)}
+                        style={{
+                            padding: '0.5rem 1rem',
+                            color: 'var(--primary-foreground)',
+                            backgroundColor: 'var(--primary)',
+                            border: 'none',
+                            borderRadius: '20px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            transition: 'opacity 0.2s',
+                            whiteSpace: 'nowrap',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                        }}
+                    >
+                        <Target size={14} />
+                        Focus Mode
+                    </button>
+
+                    <button
+                        onClick={handleSnoozeAll}
+                        disabled={isSnoozingAll || unifiedToday.filter(i => !i.isCompleted && i.type === 'task').length === 0}
+                        style={{
+                            padding: '0.5rem 0.875rem',
+                            color: 'var(--foreground)',
+                            backgroundColor: 'var(--card-bg)',
+                            border: '1px solid var(--border)',
+                            borderRadius: '20px',
+                            cursor: isSnoozingAll ? 'wait' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            transition: 'opacity 0.2s',
+                            opacity: (isSnoozingAll || unifiedToday.filter(i => !i.isCompleted && i.type === 'task').length === 0) ? 0.4 : 1,
+                            whiteSpace: 'nowrap',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                        }}
+                        title="Snooze all incomplete tasks to tomorrow"
+                    >
+                        {isSnoozingAll ? 'Snoozing...' : 'Snooze All'}
+                        <ArrowRight size={14} />
                     </button>
                 </div>
             </div>

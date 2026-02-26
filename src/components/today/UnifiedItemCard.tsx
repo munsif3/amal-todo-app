@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { Check, Clock, Calendar, Repeat, MoreVertical, MapPin } from "lucide-react";
+import { Check, Clock, Calendar, Repeat, MoreVertical, MapPin, ListTodo } from "lucide-react";
 import { motion, useMotionValue, useTransform } from "framer-motion";
 import Link from "next/link";
 import { DEFAULT_ACCOUNT_COLOR } from "@/lib/constants";
@@ -24,6 +24,7 @@ export interface UnifiedItem {
     };
     isFrog?: boolean;
     isTwoMinute?: boolean;
+    subtasksCount?: { completed: number; total: number };
 }
 
 interface UnifiedItemCardProps {
@@ -52,6 +53,11 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
         // Meetings are now swipeable
 
         if (info.offset.x > 100) {
+            if (!item.isCompleted && item.subtasksCount && item.subtasksCount.completed < item.subtasksCount.total) {
+                alert(`Cannot complete task: ${item.subtasksCount.total - item.subtasksCount.completed} requirement(s) remaining.`);
+                return;
+            }
+
             if (navigator.vibrate) navigator.vibrate(50);
             onToggle(item);
         }
@@ -142,7 +148,7 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
                 className="mobile-card-padding"
                 style={{
                     x: (isBlocked) ? 0 : x,
-                    background: item.isFrog && !item.isCompleted ? 'rgba(138, 154, 91, 0.05)' : centerColor,
+                    background: centerColor,
                     padding: '1rem',
                     borderRadius: 'var(--radius)',
                     borderTop: item.isFrog && !item.isCompleted ? '2px solid var(--accent-sage)' : '1px solid var(--border)',
@@ -168,6 +174,10 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
                     onClick={(e) => {
                         e.stopPropagation();
                         // Allow toggling via click too
+                        if (!item.isCompleted && item.subtasksCount && item.subtasksCount.completed < item.subtasksCount.total) {
+                            alert(`Cannot complete task: ${item.subtasksCount.total - item.subtasksCount.completed} requirement(s) remaining.`);
+                            return;
+                        }
                         onToggle(item);
                     }}
                     whileTap={{ scale: 0.8 }}
@@ -200,23 +210,58 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
                     {/* Meetings now look empty when not done, like tasks */}
                 </motion.button>
 
-                <div style={{ flex: 1, minWidth: 0, paddingRight: '0.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                        <h3 style={{
-                            fontSize: '1rem',
-                            fontWeight: '500',
-                            color: item.isCompleted ? 'var(--status-done)' : 'var(--foreground)',
-                            textDecoration: item.isCompleted ? 'line-through' : 'none',
-                            margin: 0,
-                            lineHeight: '1.2',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            flex: 1,
-                            minWidth: 0
-                        }}>
-                            {item.title}
-                        </h3>
+                <div style={{ flex: 1, minWidth: 0, paddingRight: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    <h3 style={{
+                        fontSize: '1rem',
+                        fontWeight: '500',
+                        color: item.isCompleted ? 'var(--status-done)' : 'var(--foreground)',
+                        textDecoration: item.isCompleted ? 'line-through' : 'none',
+                        margin: 0,
+                        lineHeight: '1.3',
+                        wordBreak: 'break-word',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                    }}>
+                        {item.title}
+                    </h3>
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
+                        {item.isFrog && !item.isCompleted && (
+                            <span style={{ fontSize: '1.1rem', lineHeight: '1', filter: 'drop-shadow(0 0 4px rgba(138, 154, 91, 0.5))' }} title="Frog Task">
+                                🐸
+                            </span>
+                        )}
+                        {item.badge && !item.isCompleted && (
+                            <span style={{
+                                fontSize: '0.65rem',
+                                fontWeight: '600',
+                                padding: '0.1rem 0.4rem',
+                                borderRadius: '4px',
+                                whiteSpace: 'nowrap',
+                                textTransform: 'uppercase',
+                                flexShrink: 0,
+                                ...badgeStyle
+                            }}>
+                                {item.badge.text}
+                            </span>
+                        )}
+                        {timeString && (
+                            <span style={{
+                                fontSize: '0.75rem',
+                                color: 'var(--primary)',
+                                fontWeight: '500',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0
+                            }}>
+                                {item.type === 'meeting' ? <Clock size={12} /> : <Calendar size={12} />}
+                                {timeString}
+                            </span>
+                        )}
                         {item.isTwoMinute && !item.isCompleted && (
                             <span style={{
                                 fontSize: '0.65rem',
@@ -235,101 +280,47 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
                                 ⚡ 2m
                             </span>
                         )}
-                        {item.badge && !item.isCompleted && (
-                            <span style={{
-                                fontSize: '0.65rem',
-                                fontWeight: '600',
-                                padding: '0.1rem 0.4rem',
-                                borderRadius: '4px',
-                                whiteSpace: 'nowrap',
-                                textTransform: 'uppercase',
-                                flexShrink: 0,
-                                ...badgeStyle
-                            }}>
-                                {item.badge.text}
-                            </span>
-                        )}
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                        {timeString && (
+                        {item.subtasksCount && item.subtasksCount.total > 0 && (
                             <span style={{
                                 fontSize: '0.75rem',
-                                color: 'var(--primary)',
-                                fontWeight: '500',
+                                color: 'var(--text-secondary)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '4px',
                                 whiteSpace: 'nowrap',
-                                flexShrink: 0
+                                flexShrink: 0,
+                                backgroundColor: 'var(--bg-subtle)',
+                                padding: '0.1rem 0.4rem',
+                                borderRadius: '4px',
+                                border: '1px solid var(--border)',
+                                fontWeight: '500'
                             }}>
-                                {item.type === 'meeting' ? <Clock size={12} /> : <Calendar size={12} />}
-                                {timeString}
-                            </span>
-                        )}
-                        {item.subtitle && (
-                            <span style={{
-                                fontSize: '0.85rem',
-                                color: 'var(--text-muted)',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                flex: 1
-                            }}>
-                                {item.subtitle}
+                                <ListTodo size={12} />
+                                {item.subtasksCount.completed}/{item.subtasksCount.total}
                             </span>
                         )}
                     </div>
+
+                    {item.subtitle && (
+                        <span style={{
+                            fontSize: '0.85rem',
+                            color: 'var(--text-muted)',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 1,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            wordBreak: 'break-word'
+                        }}>
+                            {item.subtitle}
+                        </span>
+                    )}
                 </div>
 
                 {/* Actions / Edit Link */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    {item.type === 'task' && !item.isCompleted && onToggleTwoMinute && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onToggleTwoMinute(item);
-                            }}
-                            style={{
-                                padding: '0.25rem',
-                                opacity: item.isTwoMinute ? 1 : 0.2,
-                                transition: 'opacity 0.2s',
-                                fontSize: '1.1rem',
-                                background: 'transparent',
-                                border: 'none',
-                                cursor: 'pointer',
-                                filter: item.isTwoMinute ? 'drop-shadow(0 0 4px rgba(234, 179, 8, 0.5))' : 'grayscale(100%)'
-                            }}
-                            title={item.isTwoMinute ? "Remove 2-Minute Tag" : "Mark as 2-Minute Task"}
-                        >
-                            ⚡
-                        </button>
-                    )}
-                    {item.type === 'task' && !item.isCompleted && onToggleFrog && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onToggleFrog(item);
-                            }}
-                            style={{
-                                padding: '0.25rem',
-                                opacity: item.isFrog ? 1 : 0.2,
-                                transition: 'opacity 0.2s',
-                                fontSize: '1.25rem',
-                                lineHeight: '1',
-                                background: 'transparent',
-                                border: 'none',
-                                cursor: 'pointer',
-                                filter: item.isFrog ? 'drop-shadow(0 0 4px rgba(138, 154, 91, 0.5))' : 'grayscale(100%)'
-                            }}
-                            title={item.isFrog ? "Unmark as Frog" : "Eat the Frog! (Mark as hardest task)"}
-                        >
-                            🐸
-                        </button>
-                    )}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, paddingLeft: '0.5rem' }}>
                     <Link
                         href={`/edit?type=${item.type}&id=${item.id}`}
-                        style={{ opacity: 0.3, padding: '0.25rem' }}
+                        style={{ opacity: 0.3, padding: '0.5rem' }}
                     >
                         <MoreVertical size={16} />
                     </Link>
