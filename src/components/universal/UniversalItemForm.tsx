@@ -35,10 +35,13 @@ export default function UniversalItemForm({
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Shared State
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [accountId, setAccountId] = useState("");
+
+    // Gamification State (Tasks only)
+    const [isFrog, setIsFrog] = useState(false);
+    const [isTwoMinute, setIsTwoMinute] = useState(false);
 
     // Specific State
     const [deadline, setDeadline] = useState(() => {
@@ -81,32 +84,31 @@ export default function UniversalItemForm({
             setTitle(initialData.title || "");
             setAccountId(initialData.accountId || "");
 
-            if (mode === 'TASK') {
-                setDescription(initialData.description || "");
-                if (initialData.deadline) {
-                    const date = initialData.deadline.toDate();
-                    const offset = date.getTimezoneOffset() * 60000;
-                    setDeadline((new Date(date.getTime() - offset)).toISOString().slice(0, 16));
-                }
-            } else if (mode === 'ROUTINE') {
-                setRoutineSchedule(initialData.schedule || "daily");
-                setRoutineDays(initialData.days || []);
-                setRoutineMonthDay(initialData.monthDay || 1);
-                setRoutineTime(initialData.time || "");
-            } else if (mode === 'MEETING') {
-                if (initialData.startTime) {
-                    const date = initialData.startTime.toDate();
-                    const offset = date.getTimezoneOffset() * 60000;
-                    setMeetingTime((new Date(date.getTime() - offset)).toISOString().slice(0, 16));
-                }
-                setDescription(initialData.notes?.before || "");
-            } else if (mode === 'NOTE') {
-                setDescription(initialData.content || "");
-                setNoteType(initialData.type || 'text');
+            setDescription(initialData.description || "");
+            setIsFrog(initialData.isFrog || false);
+            setIsTwoMinute(initialData.isTwoMinute || false);
+            if (initialData.deadline) {
+                const date = initialData.deadline.toDate();
+                const offset = date.getTimezoneOffset() * 60000;
+                setDeadline((new Date(date.getTime() - offset)).toISOString().slice(0, 16));
             }
+        } else if (mode === 'ROUTINE') {
+            setRoutineSchedule(initialData.schedule || "daily");
+            setRoutineDays(initialData.days || []);
+            setRoutineMonthDay(initialData.monthDay || 1);
+            setRoutineTime(initialData.time || "");
+        } else if (mode === 'MEETING') {
+            if (initialData.startTime) {
+                const date = initialData.startTime.toDate();
+                const offset = date.getTimezoneOffset() * 60000;
+                setMeetingTime((new Date(date.getTime() - offset)).toISOString().slice(0, 16));
+            }
+            setDescription(initialData.notes?.before || "");
+        } else if (mode === 'NOTE') {
+            setDescription(initialData.content || "");
+            setNoteType(initialData.type || 'text');
         }
     }, [initialData, mode]);
-
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -120,6 +122,8 @@ export default function UniversalItemForm({
                     description,
                     accountId: accountId || null,
                     deadline: deadline ? Timestamp.fromDate(new Date(deadline)) : null,
+                    isFrog,
+                    isTwoMinute
                 };
                 if (itemId) await updateTask(itemId, data);
                 else await createTask(user.uid, { ...data, status: 'next' });
@@ -369,6 +373,37 @@ export default function UniversalItemForm({
                 onChange={(e) => setDescription(e.target.value)}
                 style={{ minHeight: '120px' }}
             />
+
+            {/* Gamification Toggles (Tasks Only) */}
+            {mode === 'TASK' && (
+                <div className="mobile-wrap" style={{ display: 'flex', gap: '1rem', padding: '1rem', backgroundColor: 'var(--bg-subtle)', borderRadius: '8px', borderLeft: '3px solid var(--accent-sage)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input
+                            type="checkbox"
+                            id="isFrog"
+                            checked={isFrog}
+                            onChange={(e) => setIsFrog(e.target.checked)}
+                            style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
+                        />
+                        <label htmlFor="isFrog" style={{ fontSize: '0.875rem', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            🐸 Eat the Frog
+                        </label>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input
+                            type="checkbox"
+                            id="isTwoMinute"
+                            checked={isTwoMinute}
+                            onChange={(e) => setIsTwoMinute(e.target.checked)}
+                            style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
+                        />
+                        <label htmlFor="isTwoMinute" style={{ fontSize: '0.875rem', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            ⚡ 2-Minute Rule
+                        </label>
+                    </div>
+                </div>
+            )}
 
             {/* Actions */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>

@@ -1,6 +1,6 @@
 import { Timestamp } from 'firebase/firestore';
 
-export type TaskStatus = 'next' | 'waiting' | 'blocked' | 'scheduled' | 'fyi' | 'done';
+export type TaskStatus = 'next' | 'waiting' | 'blocked' | 'scheduled' | 'fyi' | 'done' | 'someday';
 
 export interface Reference {
     type: 'email' | 'link' | 'meeting';
@@ -25,6 +25,8 @@ export interface Task {
         userId: string;
     }[];
     routineId?: string | null;
+    isFrog?: boolean;
+    isTwoMinute?: boolean;
     order?: number;
     createdAt: Timestamp;
     updatedAt: Timestamp;
@@ -117,3 +119,12 @@ export interface Note {
 
 export type CreateNoteInput = Partial<Omit<Note, "id" | "ownerId" | "createdAt" | "updatedAt">>;
 export type UpdateNoteInput = Partial<Omit<Note, "id" | "ownerId" | "createdAt">>;
+
+export interface UserStats {
+    userId: string;
+    karma: number;
+    currentStreak: number;
+    longestStreak: number;
+    lastActiveDate: Timestamp | null;
+    updatedAt: Timestamp;
+}

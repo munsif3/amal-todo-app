@@ -9,6 +9,8 @@ import Link from "next/link";
 import { CheckSquare, Repeat, Calendar, ArrowRight } from "lucide-react";
 import Loader from "@/components/ui/Loading";
 import { Meeting } from "@/types";
+import StatsWidget from "@/components/gamification/StatsWidget";
+import SomedaySweeper from "@/components/gamification/SomedaySweeper";
 
 export default function DashboardPage() {
     const { user } = useAuth();
@@ -98,7 +100,15 @@ export default function DashboardPage() {
     return (
         <div style={{ paddingBottom: '6rem' }}>
             <h1 style={{ fontSize: '2rem', fontWeight: '800', marginBottom: '0.5rem' }}>Dashboard</h1>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>Here is your overview for today.</p>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>Here is your overview for today.</p>
+
+            {user && (
+                <div style={{ margin: '0 -1rem 1.5rem -1rem' }} className="mobile-only">
+                    <StatsWidget userId={user.uid} />
+                </div>
+            )}
+
+            <SomedaySweeper activeTasks={activeTasks} />
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {cards.map((card) => (

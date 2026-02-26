@@ -22,16 +22,20 @@ export interface UnifiedItem {
         text: string;
         variant: 'default' | 'destructive' | 'warning' | 'neutral';
     };
+    isFrog?: boolean;
+    isTwoMinute?: boolean;
 }
 
 interface UnifiedItemCardProps {
     item: UnifiedItem;
     onToggle: (item: UnifiedItem) => void;
+    onToggleFrog?: (item: UnifiedItem) => void;
+    onToggleTwoMinute?: (item: UnifiedItem) => void;
     dragControls?: any;
     isBlocked?: boolean;
 }
 
-export default function UnifiedItemCard({ item, onToggle, isBlocked, dragControls }: UnifiedItemCardProps) {
+export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggleTwoMinute, isBlocked, dragControls }: UnifiedItemCardProps) {
     const x = useMotionValue(0);
     const { resolvedTheme } = useTheme();
     const centerColor = resolvedTheme === 'dark' ? '#242424' : '#ffffff';
@@ -135,12 +139,16 @@ export default function UnifiedItemCard({ item, onToggle, isBlocked, dragControl
 
 
             <motion.div
+                className="mobile-card-padding"
                 style={{
                     x: (isBlocked) ? 0 : x,
-                    background: centerColor,
+                    background: item.isFrog && !item.isCompleted ? 'rgba(138, 154, 91, 0.05)' : centerColor,
                     padding: '1rem',
                     borderRadius: 'var(--radius)',
-                    border: '1px solid var(--border)',
+                    borderTop: item.isFrog && !item.isCompleted ? '2px solid var(--accent-sage)' : '1px solid var(--border)',
+                    borderRight: item.isFrog && !item.isCompleted ? '2px solid var(--accent-sage)' : '1px solid var(--border)',
+                    borderBottom: item.isFrog && !item.isCompleted ? '2px solid var(--accent-sage)' : '1px solid var(--border)',
+                    boxShadow: item.isFrog && !item.isCompleted ? '0 0 15px rgba(138, 154, 91, 0.2)' : 'none',
                     borderLeft: item.areaColor ? `4px solid ${item.areaColor}` : (item.accountId ? `4px solid ${DEFAULT_ACCOUNT_COLOR}` : `4px solid var(--border)`),
                     position: 'relative',
                     zIndex: 1,
@@ -156,12 +164,13 @@ export default function UnifiedItemCard({ item, onToggle, isBlocked, dragControl
                 whileTap={{ cursor: isBlocked ? 'not-allowed' : 'grabbing' }}
             >
                 {/* Checkbox / Icon Area */}
-                <button
+                <motion.button
                     onClick={(e) => {
                         e.stopPropagation();
                         // Allow toggling via click too
                         onToggle(item);
                     }}
+                    whileTap={{ scale: 0.8 }}
                     style={{
                         width: '24px',
                         height: '24px',
@@ -173,13 +182,23 @@ export default function UnifiedItemCard({ item, onToggle, isBlocked, dragControl
                         justifyContent: 'center',
                         cursor: 'pointer',
                         padding: 0,
-                        flexShrink: 0
+                        flexShrink: 0,
+                        outline: 'none',
                     }}
                 >
-                    {item.isCompleted && <Check size={14} color="white" strokeWidth={3} />}
+                    {item.isCompleted && (
+                        <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                            <Check size={14} color="white" strokeWidth={3} />
+                        </motion.div>
+                    )}
                     {item.type === 'routine' && !item.isCompleted && <Repeat size={14} className="text-muted-foreground" />}
                     {/* Meetings now look empty when not done, like tasks */}
-                </button>
+                </motion.button>
 
                 <div style={{ flex: 1, minWidth: 0, paddingRight: '0.5rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
@@ -198,6 +217,24 @@ export default function UnifiedItemCard({ item, onToggle, isBlocked, dragControl
                         }}>
                             {item.title}
                         </h3>
+                        {item.isTwoMinute && !item.isCompleted && (
+                            <span style={{
+                                fontSize: '0.65rem',
+                                fontWeight: '700',
+                                padding: '0.1rem 0.4rem',
+                                backgroundColor: 'rgba(234, 179, 8, 0.15)',
+                                color: 'var(--warning, #eab308)',
+                                borderRadius: '4px',
+                                border: '1px solid rgba(234, 179, 8, 0.3)',
+                                whiteSpace: 'nowrap',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.2rem',
+                                flexShrink: 0,
+                            }}>
+                                ⚡ 2m
+                            </span>
+                        )}
                         {item.badge && !item.isCompleted && (
                             <span style={{
                                 fontSize: '0.65rem',
@@ -246,14 +283,57 @@ export default function UnifiedItemCard({ item, onToggle, isBlocked, dragControl
                 </div>
 
                 {/* Actions / Edit Link */}
-                <Link
-                    href={
-                        `/edit?type=${item.type}&id=${item.id}`
-                    }
-                    style={{ opacity: 0.3 }}
-                >
-                    <MoreVertical size={16} />
-                </Link>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    {item.type === 'task' && !item.isCompleted && onToggleTwoMinute && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleTwoMinute(item);
+                            }}
+                            style={{
+                                padding: '0.25rem',
+                                opacity: item.isTwoMinute ? 1 : 0.2,
+                                transition: 'opacity 0.2s',
+                                fontSize: '1.1rem',
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                filter: item.isTwoMinute ? 'drop-shadow(0 0 4px rgba(234, 179, 8, 0.5))' : 'grayscale(100%)'
+                            }}
+                            title={item.isTwoMinute ? "Remove 2-Minute Tag" : "Mark as 2-Minute Task"}
+                        >
+                            ⚡
+                        </button>
+                    )}
+                    {item.type === 'task' && !item.isCompleted && onToggleFrog && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleFrog(item);
+                            }}
+                            style={{
+                                padding: '0.25rem',
+                                opacity: item.isFrog ? 1 : 0.2,
+                                transition: 'opacity 0.2s',
+                                fontSize: '1.25rem',
+                                lineHeight: '1',
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                filter: item.isFrog ? 'drop-shadow(0 0 4px rgba(138, 154, 91, 0.5))' : 'grayscale(100%)'
+                            }}
+                            title={item.isFrog ? "Unmark as Frog" : "Eat the Frog! (Mark as hardest task)"}
+                        >
+                            🐸
+                        </button>
+                    )}
+                    <Link
+                        href={`/edit?type=${item.type}&id=${item.id}`}
+                        style={{ opacity: 0.3, padding: '0.25rem' }}
+                    >
+                        <MoreVertical size={16} />
+                    </Link>
+                </div>
 
             </motion.div>
         </div>

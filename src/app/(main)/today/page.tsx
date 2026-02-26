@@ -5,13 +5,19 @@ import { Meeting, Task } from "@/types";
 import { useState, useEffect } from "react";
 import UnifiedItemCard, { UnifiedItem } from "@/components/today/UnifiedItemCard";
 import Loader from "@/components/ui/Loading";
-import { Search, Eye, EyeOff } from "lucide-react";
+import { Search, Eye, EyeOff, Target, Zap, ZapOff, ArrowRight } from "lucide-react";
 import { useRoutineCompletion } from "@/lib/hooks/use-routine-completion";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useRoutines } from "@/lib/hooks/use-routines";
 import { useAccounts } from "@/lib/hooks/use-accounts";
 import { subscribeToMeetings, toggleMeetingCompletion } from "@/lib/firebase/meetings";
+import { createTask, toggleTaskFrog, toggleTaskTwoMinute, bulkUpdateTaskDeadline } from "@/lib/firebase/tasks";
+import { Timestamp } from "firebase/firestore";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
+import confetti from "canvas-confetti";
+import SomedaySweeper from "@/components/gamification/SomedaySweeper";
+import { playPopSound } from "@/lib/sounds";
+import { awardGamificationPoints } from "@/lib/firebase/user_stats";
 
 export default function TodayPage() {
     const { user } = useAuth();
@@ -19,6 +25,14 @@ export default function TodayPage() {
     const [meetings, setMeetings] = useState<Meeting[]>([]);
     const [loadingMeetings, setLoadingMeetings] = useState(true);
     const [showCompleted, setShowCompleted] = useState(false);
+
+    // Quick Capture & Focus Mode state
+    const [quickTaskTitle, setQuickTaskTitle] = useState("");
+    const [isCreatingQuickTask, setIsCreatingQuickTask] = useState(false);
+    const [isQuickTwoMinute, setIsQuickTwoMinute] = useState(false);
+    const [isFocusMode, setIsFocusMode] = useState(false);
+    const [showOnlyTwoMinute, setShowOnlyTwoMinute] = useState(false);
+    const [isSnoozingAll, setIsSnoozingAll] = useState(false);
 
     const {
         activeTasks,
@@ -194,6 +208,8 @@ export default function TodayPage() {
             isCompleted: false,
             accountId: t.accountId || undefined,
             areaColor: accounts.find(a => a.id === t.accountId)?.color,
+            isFrog: t.isFrog,
+            isTwoMinute: t.isTwoMinute,
             originalItem: t,
             badge: badge
         };
@@ -250,6 +266,10 @@ export default function TodayPage() {
             // Completion pushes to bottom
             if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;
 
+            // Frog pushes to top (if not completed)
+            if (a.isFrog && !a.isCompleted && (!b.isFrog || b.isCompleted)) return -1;
+            if (b.isFrog && !b.isCompleted && (!a.isFrog || a.isCompleted)) return 1;
+
             // Time comparison
             if (a.time && b.time) return a.time.getTime() - b.time.getTime();
             if (a.time) return -1;
@@ -264,10 +284,75 @@ export default function TodayPage() {
         });
     };
 
-    const unifiedToday = sortItems([...todayRoutinesItems, ...todayTasksItems, ...completedTodayItems]);
-    const unifiedFuture = sortItems([...futureMeetings, ...futureTasksItems]);
+    const unifiedToday = sortItems([...todayRoutinesItems, ...todayTasksItems, ...completedTodayItems])
+        .filter(item => {
+            if (showOnlyTwoMinute) {
+                return item.isTwoMinute;
+            }
+            return true;
+        });
+    const unifiedFuture = sortItems([...futureMeetings, ...futureTasksItems])
+        .filter(item => {
+            if (showOnlyTwoMinute) {
+                return item.isTwoMinute;
+            }
+            return true;
+        });
+
+    const handleToggleFrog = async (item: UnifiedItem) => {
+        if (item.type === 'task') {
+            await toggleTaskFrog(item.id, !item.isFrog);
+        }
+    };
+
+    const handleToggleTwoMinute = async (item: UnifiedItem) => {
+        if (item.type === 'task') {
+            await toggleTaskTwoMinute(item.id, !item.isTwoMinute);
+        }
+    };
 
     const handleToggle = (item: UnifiedItem) => {
+        const isNowCompleting = !item.isCompleted;
+
+        if (isNowCompleting) {
+            playPopSound();
+
+            if (user) {
+                awardGamificationPoints(user.uid, {
+                    isFrog: item.isFrog,
+                    isTwoMinute: item.isTwoMinute,
+                    isRoutine: item.type === 'routine'
+                }).catch(console.error);
+            }
+
+            const remainingIncomplete = unifiedToday.filter(i => !i.isCompleted && i.id !== item.id);
+
+            // Special reward for eating the frog early!
+            if (item.isFrog) {
+                const now = new Date();
+                if (now.getHours() < 12) {
+                    setTimeout(() => {
+                        confetti({
+                            particleCount: 150,
+                            spread: 100,
+                            colors: ['#8a9a5b', '#556b2f', '#FFD700'], // Sage, Olive, Gold
+                            origin: { y: 0.6 }
+                        });
+                    }, 100);
+                }
+            }
+
+            if (remainingIncomplete.length === 0) {
+                setTimeout(() => {
+                    confetti({
+                        particleCount: 100,
+                        spread: 70,
+                        origin: { y: 0.6 }
+                    });
+                }, 300);
+            }
+        }
+
         if (item.type === 'task') {
             changeTaskStatus(item.id, item.isCompleted ? 'next' : 'done');
         } else if (item.type === 'routine') {
@@ -277,8 +362,83 @@ export default function TodayPage() {
         }
     };
 
+    const handleQuickSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!quickTaskTitle.trim() || !user) return;
+        setIsCreatingQuickTask(true);
+        try {
+            await createTask(user.uid, {
+                title: quickTaskTitle.trim(),
+                deadline: Timestamp.fromDate(endOfToday),
+                status: "next",
+                isTwoMinute: isQuickTwoMinute
+            });
+            setQuickTaskTitle("");
+            setIsQuickTwoMinute(false); // Reset after use
+        } catch (error) {
+            console.error("Failed to create quick task", error);
+        } finally {
+            setIsCreatingQuickTask(false);
+        }
+    };
+
+    const handleSnoozeAll = async () => {
+        const incompleteTasks = unifiedToday.filter(i => !i.isCompleted && i.type === 'task');
+        if (incompleteTasks.length === 0) return;
+
+        if (!confirm(`Are you sure you want to snooze ${incompleteTasks.length} tasks to tomorrow?`)) return;
+
+        setIsSnoozingAll(true);
+        try {
+            const taskIds = incompleteTasks.map(t => t.id);
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(23, 59, 59, 999);
+
+            await bulkUpdateTaskDeadline(taskIds, Timestamp.fromDate(tomorrow));
+        } catch (error) {
+            console.error("Failed to snooze all tasks:", error);
+        } finally {
+            setIsSnoozingAll(false);
+        }
+    };
+
+    if (isFocusMode) {
+        const incompleteToday = unifiedToday.filter(i => !i.isCompleted);
+        const currentFocusTask = incompleteToday.length > 0 ? incompleteToday[0] : null;
+
+        return (
+            <div style={{ height: 'calc(100vh - 150px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem', position: 'relative' }}>
+                <button
+                    onClick={() => setIsFocusMode(false)}
+                    style={{ position: 'absolute', top: '2rem', right: '1rem', padding: '0.5rem 1rem', borderRadius: '20px', backgroundColor: 'var(--muted)', fontSize: '0.875rem', border: 'none', cursor: 'pointer' }}
+                >
+                    Exit Focus
+                </button>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '3rem', color: 'var(--primary)' }}>
+                    <Target size={24} />
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>Focus Mode</h2>
+                </div>
+
+                {currentFocusTask ? (
+                    <div style={{ width: '100%', maxWidth: '500px', transform: 'scale(1.05)', transition: 'transform 0.3s' }}>
+                        <UnifiedItemCard item={currentFocusTask} onToggle={handleToggle} />
+                    </div>
+                ) : (
+                    <div style={{ textAlign: 'center' }}>
+                        <p style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>You're all done!</p>
+                        <button onClick={() => setIsFocusMode(false)} style={{ padding: '0.75rem 1.5rem', backgroundColor: 'var(--primary)', color: 'white', borderRadius: '8px', border: 'none', cursor: 'pointer' }}>
+                            Return to List
+                        </button>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
     return (
-        <div style={{ paddingBottom: '6rem' }}>
+        <div className="today-page-container">
             {/* Search Bar */}
             <div style={{ position: 'relative', marginBottom: '2rem' }}>
                 <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }} />
@@ -301,26 +461,93 @@ export default function TodayPage() {
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <h1 style={{ fontSize: '1.5rem', fontWeight: '800' }}>Today</h1>
-                <button
-                    onClick={() => setShowCompleted(!showCompleted)}
-                    style={{
-                        padding: '0.5rem',
-                        color: showCompleted ? 'var(--primary)' : 'var(--text-secondary)',
-                        backgroundColor: showCompleted ? 'var(--primary-muted)' : 'transparent',
-                        border: '1px solid var(--border)',
-                        borderRadius: '50%',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        transition: 'all 0.2s ease',
-                        width: '36px',
-                        height: '36px'
-                    }}
-                    title={showCompleted ? "Hide Completed" : "Show Completed"}
-                >
-                    {showCompleted ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                        onClick={() => setShowOnlyTwoMinute(!showOnlyTwoMinute)}
+                        style={{
+                            padding: '0.5rem 0.75rem',
+                            color: showOnlyTwoMinute ? 'var(--warning, #eab308)' : 'var(--text-secondary)',
+                            backgroundColor: showOnlyTwoMinute ? 'rgba(234, 179, 8, 0.15)' : 'transparent',
+                            border: '1px solid',
+                            borderColor: showOnlyTwoMinute ? 'rgba(234, 179, 8, 0.3)' : 'var(--border)',
+                            borderRadius: '20px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            transition: 'all 0.2s ease',
+                        }}
+                        title="Filter 2-Minute Tasks"
+                    >
+                        {showOnlyTwoMinute ? <Zap size={16} /> : <ZapOff size={16} />}
+                        2m
+                    </button>
+                    <button
+                        onClick={() => setIsFocusMode(true)}
+                        style={{
+                            padding: '0.5rem 1rem',
+                            color: 'var(--primary-foreground)',
+                            backgroundColor: 'var(--primary)',
+                            border: 'none',
+                            borderRadius: '20px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            transition: 'opacity 0.2s',
+                        }}
+                    >
+                        <Target size={16} />
+                        Focus
+                    </button>
+                    <button
+                        onClick={handleSnoozeAll}
+                        disabled={isSnoozingAll || unifiedToday.filter(i => !i.isCompleted && i.type === 'task').length === 0}
+                        style={{
+                            padding: '0.5rem 1rem',
+                            color: 'var(--text-secondary)',
+                            backgroundColor: 'transparent',
+                            border: '1px solid var(--border)',
+                            borderRadius: '20px',
+                            cursor: isSnoozingAll ? 'wait' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            transition: 'opacity 0.2s',
+                            opacity: (isSnoozingAll || unifiedToday.filter(i => !i.isCompleted && i.type === 'task').length === 0) ? 0.5 : 1
+                        }}
+                        title="Snooze all incomplete tasks to tomorrow"
+                    >
+                        {isSnoozingAll ? 'Snoozing...' : 'Snooze'}
+                        <ArrowRight size={16} />
+                    </button>
+                    <button
+                        onClick={() => setShowCompleted(!showCompleted)}
+                        style={{
+                            padding: '0.5rem',
+                            color: showCompleted ? 'var(--primary)' : 'var(--text-secondary)',
+                            backgroundColor: showCompleted ? 'var(--primary-muted)' : 'transparent',
+                            border: '1px solid var(--border)',
+                            borderRadius: '50%',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.2s ease',
+                            width: '36px',
+                            height: '36px'
+                        }}
+                        title={showCompleted ? "Hide Completed" : "Show Completed"}
+                    >
+                        {showCompleted ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                </div>
             </div>
 
             {unifiedToday.length === 0 ? (
@@ -329,11 +556,15 @@ export default function TodayPage() {
                 </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '2rem' }}>
+                    <SomedaySweeper activeTasks={activeTasks} />
+
                     {unifiedToday.map(item => (
                         <UnifiedItemCard
                             key={`${item.type}-${item.id}`}
                             item={item}
                             onToggle={handleToggle}
+                            onToggleFrog={handleToggleFrog}
+                            onToggleTwoMinute={handleToggleTwoMinute}
                         />
                     ))}
                 </div>
@@ -348,11 +579,74 @@ export default function TodayPage() {
                                 key={`${item.type}-${item.id}`}
                                 item={item}
                                 onToggle={handleToggle}
+                                onToggleFrog={handleToggleFrog}
+                                onToggleTwoMinute={handleToggleTwoMinute}
                             />
                         ))}
                     </div>
                 </CollapsibleSection>
             )}
+
+            {/* Quick Capture Bar */}
+            <div className="quick-capture-bar">
+                <form onSubmit={handleQuickSubmit} style={{ display: 'flex', gap: '0.5rem', maxWidth: '768px', margin: '0 auto' }}>
+                    <input
+                        type="text"
+                        placeholder="I need to..."
+                        value={quickTaskTitle}
+                        onChange={(e) => setQuickTaskTitle(e.target.value)}
+                        disabled={isCreatingQuickTask}
+                        style={{
+                            flex: 1,
+                            padding: '0.75rem 1rem',
+                            borderRadius: '9999px',
+                            border: '1px solid var(--border)',
+                            backgroundColor: 'var(--bg-subtle)',
+                            fontSize: '1rem',
+                            outline: 'none',
+                        }}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setIsQuickTwoMinute(!isQuickTwoMinute)}
+                        style={{
+                            width: '44px',
+                            height: '44px',
+                            borderRadius: '50%',
+                            backgroundColor: isQuickTwoMinute ? 'rgba(234, 179, 8, 0.15)' : 'var(--bg-subtle)',
+                            border: isQuickTwoMinute ? '1px solid rgba(234, 179, 8, 0.3)' : '1px solid var(--border)',
+                            color: isQuickTwoMinute ? 'var(--warning, #eab308)' : 'var(--muted-foreground)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                        }}
+                        title="Mark as 2-Minute Task"
+                    >
+                        <Zap size={20} />
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={!quickTaskTitle.trim() || isCreatingQuickTask}
+                        style={{
+                            width: '44px',
+                            height: '44px',
+                            borderRadius: '50%',
+                            backgroundColor: quickTaskTitle.trim() ? 'var(--primary)' : 'var(--muted)',
+                            color: 'white',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: 'none',
+                            cursor: quickTaskTitle.trim() ? 'pointer' : 'default',
+                            transition: 'background-color 0.2s'
+                        }}
+                    >
+                        {isCreatingQuickTask ? <Loader size="sm" /> : <span style={{ fontSize: '1.5rem', lineHeight: '1' }}>+</span>}
+                    </button>
+                </form>
+            </div>
         </div>
     );
 }

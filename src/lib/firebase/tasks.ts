@@ -112,6 +112,8 @@ export async function createTask(userId: string, taskData: CreateTaskInput) {
                 userId: userId,
             }
         ],
+        isFrog: taskData.isFrog || false,
+        isTwoMinute: taskData.isTwoMinute || false,
         order: taskData.order !== undefined ? taskData.order : Date.now(),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -150,7 +152,62 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus, userI
     });
 }
 
+export async function toggleTaskFrog(taskId: string, isFrog: boolean) {
+    const taskRef = doc(db, TASKS_COLLECTION, taskId);
+    return updateDoc(taskRef, {
+        isFrog,
+        updatedAt: serverTimestamp(),
+    });
+}
+
+export async function toggleTaskTwoMinute(taskId: string, isTwoMinute: boolean) {
+    const taskRef = doc(db, TASKS_COLLECTION, taskId);
+    return updateDoc(taskRef, {
+        isTwoMinute,
+        updatedAt: serverTimestamp(),
+    });
+}
+
 export async function deleteTask(taskId: string) {
     const taskRef = doc(db, TASKS_COLLECTION, taskId);
     return deleteDoc(taskRef);
+}
+
+export async function bulkUpdateTaskStatus(taskIds: string[], status: TaskStatus, userId: string) {
+    if (!taskIds.length) return;
+
+    // Firestore batches allow up to 500 operations. 
+    // For a simple to-do app, we assume < 500 tasks, but we should chunk if larger.
+    const batch = writeBatch(db);
+
+    taskIds.forEach(id => {
+        const taskRef = doc(db, TASKS_COLLECTION, id);
+        batch.update(taskRef, {
+            status,
+            updatedAt: serverTimestamp(),
+            history: arrayUnion({
+                action: `bulk_status_changed_to_${status}`,
+                timestamp: Timestamp.now(),
+                userId: userId,
+            })
+        });
+    });
+
+    return batch.commit();
+}
+
+export async function bulkUpdateTaskDeadline(taskIds: string[], newDeadline: Timestamp | null) {
+    if (!taskIds.length) return;
+
+    const batch = writeBatch(db);
+
+    taskIds.forEach(id => {
+        const taskRef = doc(db, TASKS_COLLECTION, id);
+        batch.update(taskRef, {
+            deadline: newDeadline,
+            updatedAt: serverTimestamp(),
+        });
+    });
+
+    return batch.commit();
 }

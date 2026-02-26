@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Calendar, CheckCircle2, LayoutGrid, Plus, Repeat, User, Book } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { useAuth } from "@/lib/firebase/auth-context";
+import StatsWidget from "@/components/gamification/StatsWidget";
 
 const navItems = [
     { label: "Today", href: "/today", icon: CheckCircle2 },
@@ -14,6 +16,7 @@ const navItems = [
 
 export default function Sidebar() {
     const pathname = usePathname();
+    const { user } = useAuth();
 
     return (
         <aside className="desktop-only" style={{
@@ -29,11 +32,17 @@ export default function Sidebar() {
             flexDirection: 'column',
             gap: '2rem'
         }}>
-            <div style={{ paddingLeft: '0.5rem' }}>
+            <div style={{ paddingLeft: '0.5rem', marginBottom: '1rem' }}>
                 <Link href="/dashboard" style={{ textDecoration: 'none', color: 'inherit' }}>
                     <h1 style={{ fontSize: '1.5rem', fontWeight: '800', letterSpacing: '-0.02em', cursor: 'pointer' }}>AMAL</h1>
                 </Link>
             </div>
+
+            {user && (
+                <div style={{ margin: '0 -1.5rem' }}>
+                    <StatsWidget userId={user.uid} />
+                </div>
+            )}
 
             <Link href="/new" style={{
                 display: 'flex',

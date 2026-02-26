@@ -52,8 +52,9 @@ export function useTasks(user: User | null | undefined, searchQuery: string = ""
 
     const filterItem = (text: string) => text.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const activeTasks = tasks.filter(t => t.status !== 'done' && t.status !== 'waiting' && (filterItem(t.title) || (t.description && filterItem(t.description))));
+    const activeTasks = tasks.filter(t => t.status !== 'done' && t.status !== 'waiting' && t.status !== 'someday' && (filterItem(t.title) || (t.description && filterItem(t.description))));
     const snoozedTasks = tasks.filter(t => t.status === 'waiting' && (filterItem(t.title) || (t.description && filterItem(t.description))));
+    const somedayTasks = tasks.filter(t => t.status === 'someday' && (filterItem(t.title) || (t.description && filterItem(t.description))));
     const finishedTasks = tasks.filter(t => t.status === 'done' && (filterItem(t.title) || (t.description && filterItem(t.description))));
 
     const reorderTasks = async (newOrder: Task[]) => {
@@ -99,6 +100,7 @@ export function useTasks(user: User | null | undefined, searchQuery: string = ""
         tasks,
         activeTasks,
         snoozedTasks,
+        somedayTasks,
         finishedTasks,
         loading,
         reorderTasks,
