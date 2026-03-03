@@ -4,6 +4,7 @@ import {
     getDoc,
     setDoc,
     updateDoc,
+    onSnapshot,
     serverTimestamp,
     Timestamp
 } from "firebase/firestore";
@@ -95,4 +96,45 @@ export async function awardGamificationPoints(
     };
 
     await updateDoc(statsRef, updates);
+}
+
+/**
+ * Subscribes to real-time updates of a user's stats document.
+ * Automatically initializes the document if it doesn't exist.
+ */
+export function subscribeToUserStats(
+    userId: string,
+    callback: (stats: UserStats | null) => void
+): () => void {
+    if (!userId) {
+        callback(null);
+        return () => { };
+    }
+
+    const statsRef = doc(db, USER_STATS_COLLECTION, userId);
+    let initialized = false;
+
+    const unsubscribe = onSnapshot(statsRef, async (snap) => {
+        if (snap.exists()) {
+            callback(snap.data() as UserStats);
+        } else if (!initialized) {
+            initialized = true;
+            try {
+                const stats = await initializeUserStats(userId);
+                callback(stats);
+            } catch (err: unknown) {
+                const firebaseErr = err as { code?: string };
+                if (firebaseErr.code !== 'permission-denied') {
+                    console.error("Failed to initialize user stats:", err);
+                }
+                callback(null);
+            }
+        }
+    }, (error) => {
+        if (error.code !== 'permission-denied') {
+            console.error("Error subscribing to user stats:", error);
+        }
+    });
+
+    return unsubscribe;
 }

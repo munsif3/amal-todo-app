@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { UserStats } from "@/types";
-import { db } from "@/lib/firebase/client";
-import { doc, onSnapshot, getDoc } from "firebase/firestore";
-import { initializeUserStats } from "@/lib/firebase/user_stats";
+import { subscribeToUserStats } from "@/lib/firebase/user_stats";
 import { Flame, Star } from "lucide-react";
 
 interface StatsWidgetProps {
@@ -16,41 +14,8 @@ export default function StatsWidget({ userId }: StatsWidgetProps) {
 
     useEffect(() => {
         if (!userId) return;
-
-        let unsubscribe: (() => void) | undefined;
-
-        const setupListener = async () => {
-            const statsRef = doc(db, "user_stats", userId);
-
-            try {
-                // Ensure the document exists before listening, to prevent permission errors
-                // if Firestore rules are strict about reading non-existent docs.
-                const snap = await getDoc(statsRef);
-                if (!snap.exists()) {
-                    await initializeUserStats(userId);
-                }
-
-                unsubscribe = onSnapshot(statsRef, (doc) => {
-                    if (doc.exists()) {
-                        setStats(doc.data() as UserStats);
-                    }
-                }, (error) => {
-                    if (error.code !== 'permission-denied') {
-                        console.error("Error listening to user stats:", error);
-                    }
-                });
-            } catch (err: any) {
-                if (err.code !== 'permission-denied') {
-                    console.error("Failed to initialize stats listener:", err);
-                }
-            }
-        };
-
-        setupListener();
-
-        return () => {
-            if (unsubscribe) unsubscribe();
-        };
+        const unsubscribe = subscribeToUserStats(userId, setStats);
+        return () => unsubscribe();
     }, [userId]);
 
     if (!stats) return null;

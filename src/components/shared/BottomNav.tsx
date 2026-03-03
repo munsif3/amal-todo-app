@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Book, Calendar, CheckCircle2, LayoutGrid, Plus, Repeat, User, Archive } from "lucide-react";
+import { Book, CheckCircle2, LayoutGrid, Plus, User } from "lucide-react";
 
 const navItems = [
     { label: "Today", href: "/today", icon: CheckCircle2 },

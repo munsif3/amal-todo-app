@@ -7,7 +7,7 @@ import { createTask, updateTask } from "@/lib/firebase/tasks";
 import { createRoutine, updateRoutine } from "@/lib/firebase/routines";
 import { createMeeting, updateMeeting } from "@/lib/firebase/meetings";
 import { createNote, updateNote } from "@/lib/firebase/notes";
-import { Account, TaskStatus, Subtask } from "@/types";
+import { Account, Task, Routine, Meeting, Note, TaskStatus, Subtask, UpdateMeetingInput } from "@/types";
 import { Input, Textarea, Button } from "@/components/ui/Form";
 import AreaSelector from "@/components/ui/AreaSelector";
 import { Timestamp } from "firebase/firestore";
@@ -19,7 +19,7 @@ interface UniversalItemFormProps {
     onClose?: () => void;
     onSuccess?: () => void;
     initialMode?: CaptureMode;
-    initialData?: any;
+    initialData?: Partial<Task> & Partial<Routine> & Partial<Meeting> & Partial<Note>;
     itemId?: string;
 }
 
@@ -81,10 +81,14 @@ export default function UniversalItemForm({
 
     // Initialize Data from Props
     useEffect(() => {
-        if (initialData) {
-            setTitle(initialData.title || "");
-            setAccountId(initialData.accountId || "");
+        if (!initialData) return;
 
+        // Common fields shared by all modes
+        setTitle(initialData.title || "");
+        setAccountId(initialData.accountId || "");
+
+        // Mode-specific field initialization
+        if (mode === 'TASK') {
             setDescription(initialData.description || "");
             setIsFrog(initialData.isFrog || false);
             setIsTwoMinute(initialData.isTwoMinute || false);
@@ -158,13 +162,17 @@ export default function UniversalItemForm({
                 if (itemId) {
                     // Fetch existing to merge notes? or just update title/time/account
                     // For simplicity, let's just update the known fields. 
-                    const updateData: any = {
+                    const updateData: Partial<UpdateMeetingInput> = {
                         title: data.title,
                         accountId: data.accountId,
                         startTime: data.startTime
                     };
                     if (description !== initialData?.notes?.before) {
-                        updateData.notes = { ...initialData?.notes, before: description };
+                        updateData.notes = {
+                            before: description,
+                            during: initialData?.notes?.during || '',
+                            after: initialData?.notes?.after || ''
+                        };
                     }
                     await updateMeeting(itemId, updateData);
                 } else {

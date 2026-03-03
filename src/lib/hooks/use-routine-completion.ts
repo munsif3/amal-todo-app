@@ -1,8 +1,8 @@
-import { useState } from 'react';
 import { Routine } from '@/types';
 import { toggleRoutineCompletion } from '@/lib/firebase/routines';
+import { User } from 'firebase/auth';
 
-export function useRoutineCompletion(user: any) {
+export function useRoutineCompletion(user: User | null) {
     const todayStr = new Date().toISOString().split('T')[0];
 
     const isRoutineCompletedToday = (routine: Routine) => {

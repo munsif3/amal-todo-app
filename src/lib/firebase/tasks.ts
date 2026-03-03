@@ -22,73 +22,65 @@ import { genericConverter } from "./converters";
 const TASKS_COLLECTION = "tasks";
 const taskConverter = genericConverter<Task>();
 
+/**
+ * Subscribes to all non-done tasks for a user.
+ * Client-side sorting is expected since Firestore `!=` queries limit compound ordering.
+ */
 export function subscribeToActiveTasks(userId: string, callback: (tasks: Task[]) => void) {
-    // Active tasks: status is NOT 'done'
-    // Note: Firestore != queries exclude documents where the field is missing.
-    // Ensure all tasks have a status.
     const q = query(
         collection(db, TASKS_COLLECTION).withConverter(taskConverter),
         where("ownerId", "==", userId),
         where("status", "!=", "done"),
-        // We typically want to sort by order or deadline, but with != filter,
-        // the first orderBy must be on the same field ('status').
-        // Client-side sorting is often needed after this, or using a specific index.
-        // For simplicity and performance, we filter by status active, then we can sort by order if the index allows.
-        // However, "status != 'done'" requires an index if we want to combine with other sorts.
-        // Let's rely on client-side sorting for the filtered set since "active" tasks count is usually manageable (<1000).
     );
 
     return onSnapshot(q, (snapshot) => {
         const tasks = snapshot.docs.map((doc) => doc.data());
         callback(tasks);
+    }, (error) => {
+        console.error("Error subscribing to active tasks:", error);
     });
 }
 
+/**
+ * Subscribes to recently completed tasks for a user, ordered by most recently updated.
+ * Results are capped by `limitCount` to avoid fetching full completion history.
+ */
 export function subscribeToRecentCompletedTasks(userId: string, limitCount: number = 50, callback: (tasks: Task[]) => void) {
     const q = query(
         collection(db, TASKS_COLLECTION).withConverter(taskConverter),
         where("ownerId", "==", userId),
         where("status", "==", "done"),
         orderBy("updatedAt", "desc"),
-        // Limit to prevent fetching full history
-        // users can load more if needed, but for "Today" view we usually don't need infinite history
+        limit(limitCount)
     );
 
-    // Note: 'limit' needs to be imported if we use it, but since we are inside the function logic,
-    // we should add it to the query construction.
-    // However, the import 'limit' is missing in the original file imports.
-    // I will assume the user (me) will add the import or I should check imports first.
-    // Wait, I can't check imports mid-tool call. I'll use the 'query' builder pattern.
-    // Actually, I need to make sure 'limit' is imported.
-    // Let's accept this replacement and then I'll fix imports.
-
-    // Actually, to be safe, I'll rewrite the whole file imports to include 'limit'
-    // But this tool is 'replace_file_content' for specific blocks.
-    // I'll stick to 'subscribeToTasks' replacement and then do a separate 'replace_file_content' for imports.
-    // For now, I will use a different strategy: 
-    // I will just modify the exports and assume I'll fix imports next step.
-    return onSnapshot(query(q, require("firebase/firestore").limit(limitCount)), (snapshot) => {
+    return onSnapshot(q, (snapshot) => {
         const tasks = snapshot.docs.map((doc) => doc.data());
         callback(tasks);
+    }, (error) => {
+        console.error("Error subscribing to completed tasks:", error);
     });
 }
 
+/** Subscribes to active tasks for a specific account. */
 export function subscribeToAccountTasks(userId: string, accountId: string, callback: (tasks: Task[]) => void) {
     const q = query(
         collection(db, TASKS_COLLECTION).withConverter(taskConverter),
         where("ownerId", "==", userId),
         where("accountId", "==", accountId),
-        where("status", "!=", "done"), // Only show active tasks for accounts by default
+        where("status", "!=", "done"),
         orderBy("createdAt", "desc")
     );
 
     return onSnapshot(q, (snapshot) => {
         const tasks = snapshot.docs.map((doc) => doc.data());
         callback(tasks);
+    }, (error) => {
+        console.error("Error subscribing to account tasks:", error);
     });
 }
 
-
+/** Fetches a single task by ID, returns null if not found. */
 export async function getTask(taskId: string) {
     const docRef = doc(db, TASKS_COLLECTION, taskId).withConverter(taskConverter);
     const docSnap = await getDoc(docRef);
@@ -98,6 +90,7 @@ export async function getTask(taskId: string) {
     return null;
 }
 
+/** Creates a new task with default fields and an initial history entry. */
 export async function createTask(userId: string, taskData: CreateTaskInput) {
     const newTask = {
         ...taskData,
@@ -123,6 +116,7 @@ export async function createTask(userId: string, taskData: CreateTaskInput) {
     return addDoc(collection(db, TASKS_COLLECTION), newTask);
 }
 
+/** Batch-updates the display order of multiple tasks in a single Firestore write. */
 export async function updateTasksOrder(updates: { id: string; order: number }[]) {
     const batch = writeBatch(db);
     updates.forEach(({ id, order }) => {
@@ -132,6 +126,7 @@ export async function updateTasksOrder(updates: { id: string; order: number }[])
     return batch.commit();
 }
 
+/** Updates a task's fields and refreshes `updatedAt`. */
 export async function updateTask(taskId: string, data: UpdateTaskInput) {
     const taskRef = doc(db, TASKS_COLLECTION, taskId);
     return updateDoc(taskRef, {
@@ -140,6 +135,7 @@ export async function updateTask(taskId: string, data: UpdateTaskInput) {
     });
 }
 
+/** Updates task status and appends a history entry with the status change. */
 export async function updateTaskStatus(taskId: string, status: TaskStatus, userId: string) {
     const taskRef = doc(db, TASKS_COLLECTION, taskId);
     return updateDoc(taskRef, {
@@ -153,6 +149,7 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus, userI
     });
 }
 
+/** Toggles the 'Eat the Frog' flag on a task. */
 export async function toggleTaskFrog(taskId: string, isFrog: boolean) {
     const taskRef = doc(db, TASKS_COLLECTION, taskId);
     return updateDoc(taskRef, {
@@ -161,6 +158,7 @@ export async function toggleTaskFrog(taskId: string, isFrog: boolean) {
     });
 }
 
+/** Toggles the 2-minute rule flag on a task. */
 export async function toggleTaskTwoMinute(taskId: string, isTwoMinute: boolean) {
     const taskRef = doc(db, TASKS_COLLECTION, taskId);
     return updateDoc(taskRef, {
@@ -169,16 +167,19 @@ export async function toggleTaskTwoMinute(taskId: string, isTwoMinute: boolean) 
     });
 }
 
+/** Permanently deletes a task. */
 export async function deleteTask(taskId: string) {
     const taskRef = doc(db, TASKS_COLLECTION, taskId);
     return deleteDoc(taskRef);
 }
 
+/**
+ * Batch-updates the status of multiple tasks.
+ * Note: Firestore batches support up to 500 operations.
+ */
 export async function bulkUpdateTaskStatus(taskIds: string[], status: TaskStatus, userId: string) {
     if (!taskIds.length) return;
 
-    // Firestore batches allow up to 500 operations. 
-    // For a simple to-do app, we assume < 500 tasks, but we should chunk if larger.
     const batch = writeBatch(db);
 
     taskIds.forEach(id => {
@@ -197,6 +198,7 @@ export async function bulkUpdateTaskStatus(taskIds: string[], status: TaskStatus
     return batch.commit();
 }
 
+/** Batch-updates the deadline of multiple tasks. */
 export async function bulkUpdateTaskDeadline(taskIds: string[], newDeadline: Timestamp | null) {
     if (!taskIds.length) return;
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { subscribeToActiveTasks, subscribeToRecentCompletedTasks, updateTaskStatus, updateTasksOrder } from "@/lib/firebase/tasks";
 import { Task } from "@/types";
 import { User } from 'firebase/auth';
@@ -7,27 +7,30 @@ export function useTasks(user: User | null | undefined, searchQuery: string = ""
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
     const [isReordering, setIsReordering] = useState(false);
+    const loadedRef = useRef(false);
 
     useEffect(() => {
         if (user) {
             let activeTasksData: Task[] = [];
             let completedTasksData: Task[] = [];
+            loadedRef.current = false;
 
             const updateState = () => {
-                // Client-side sort by order then createdAt
                 const combined = [...activeTasksData, ...completedTasksData];
                 const sorted = combined.sort((a, b) => {
                     const orderA = a.order ?? Number.MAX_SAFE_INTEGER;
                     const orderB = b.order ?? Number.MAX_SAFE_INTEGER;
                     if (orderA !== orderB) return orderA - orderB;
-                    // Fallback to createdAt desc (newer first) if no order
                     return (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0);
                 });
 
                 if (!isReordering) {
                     setTasks(sorted);
                 }
-                if (loading) setLoading(false);
+                if (!loadedRef.current) {
+                    loadedRef.current = true;
+                    setLoading(false);
+                }
             };
 
             const unsubscribeActive = subscribeToActiveTasks(user.uid, (fetchedTasks) => {

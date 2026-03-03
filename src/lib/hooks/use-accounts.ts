@@ -11,7 +11,7 @@ export function useAccounts(user: User | null | undefined) {
         if (user) {
             const unsubscribe = subscribeToAccounts(user.uid, (fetchedAccounts) => {
                 setAccounts(fetchedAccounts);
-                if (loading) setLoading(false);
+                setLoading(false);
             });
             return () => unsubscribe();
         } else {

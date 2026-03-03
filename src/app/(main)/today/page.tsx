@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/lib/firebase/auth-context";
-import { Meeting, Task } from "@/types";
+import { Meeting, Task, Subtask, Routine } from "@/types";
 import { useState, useEffect } from "react";
 import UnifiedItemCard, { UnifiedItem } from "@/components/today/UnifiedItemCard";
 import Loader from "@/components/ui/Loading";
@@ -213,7 +213,7 @@ export default function TodayPage() {
             originalItem: t,
             badge: badge,
             subtasksCount: t.subtasks && t.subtasks.length > 0 ? {
-                completed: t.subtasks.filter((s: any) => s.isCompleted).length,
+                completed: t.subtasks.filter((s: Subtask) => s.isCompleted).length,
                 total: t.subtasks.length
             } : undefined
         };
@@ -233,10 +233,9 @@ export default function TodayPage() {
             // Check if completed today
             const getCompletionDate = (task: Task) => {
                 // Try history first
-                const doneEntries = task.history?.filter((h: any) => h.action === 'status_changed_to_done');
+                const doneEntries = task.history?.filter((h: { action: string }) => h.action === 'status_changed_to_done');
                 if (doneEntries && doneEntries.length > 0) {
-                    // Get latest
-                    const latest = doneEntries.reduce((prev: any, current: any) => {
+                    const latest = doneEntries.reduce((prev, current) => {
                         return (prev.timestamp?.toMillis() || 0) > (current.timestamp?.toMillis() || 0) ? prev : current;
                     });
                     return latest.timestamp?.toDate();
@@ -259,7 +258,7 @@ export default function TodayPage() {
                     originalItem: t,
                     badge: undefined,
                     subtasksCount: t.subtasks && t.subtasks.length > 0 ? {
-                        completed: t.subtasks.filter((s: any) => s.isCompleted).length,
+                        completed: t.subtasks.filter((s: Subtask) => s.isCompleted).length,
                         total: t.subtasks.length
                     } : undefined
                 };
@@ -364,7 +363,7 @@ export default function TodayPage() {
         if (item.type === 'task') {
             changeTaskStatus(item.id, item.isCompleted ? 'next' : 'done');
         } else if (item.type === 'routine') {
-            toggleCompletion(item.originalItem);
+            toggleCompletion(item.originalItem as Routine);
         } else if (item.type === 'meeting') {
             toggleMeetingCompletion(item.id, !item.isCompleted);
         }

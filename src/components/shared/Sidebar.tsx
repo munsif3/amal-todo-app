@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Calendar, CheckCircle2, LayoutGrid, Plus, Repeat, User, Book, Archive } from "lucide-react";
+import { Calendar, CheckCircle2, LayoutGrid, Plus, Repeat, User, Book } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useAuth } from "@/lib/firebase/auth-context";
 import StatsWidget from "@/components/gamification/StatsWidget";

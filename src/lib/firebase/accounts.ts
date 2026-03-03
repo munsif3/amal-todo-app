@@ -18,6 +18,7 @@ import { genericConverter } from "./converters";
 const ACCOUNTS_COLLECTION = "accounts";
 const accountConverter = genericConverter<Account>();
 
+/** Subscribes to all accounts for a user, ordered by creation date. */
 export function subscribeToAccounts(userId: string, callback: (accounts: Account[]) => void) {
     const q = query(
         collection(db, ACCOUNTS_COLLECTION).withConverter(accountConverter),
@@ -28,9 +29,12 @@ export function subscribeToAccounts(userId: string, callback: (accounts: Account
     return onSnapshot(q, (snapshot) => {
         const accounts = snapshot.docs.map((doc) => doc.data());
         callback(accounts);
+    }, (error) => {
+        console.error("Error subscribing to accounts:", error);
     });
 }
 
+/** Creates a new account for a user with default active status. */
 export async function createAccount(userId: string, data: CreateAccountInput) {
     const newAccount = {
         ...data,
@@ -43,6 +47,7 @@ export async function createAccount(userId: string, data: CreateAccountInput) {
     return addDoc(collection(db, ACCOUNTS_COLLECTION), newAccount);
 }
 
+/** Fetches a single account by ID, returns null if not found. */
 export async function getAccount(accountId: string) {
     const docRef = doc(db, ACCOUNTS_COLLECTION, accountId).withConverter(accountConverter);
     const docSnap = await getDoc(docRef);
@@ -52,7 +57,7 @@ export async function getAccount(accountId: string) {
     return null;
 }
 
-
+/** Updates an account's fields and refreshes `updatedAt` timestamp. */
 export async function updateAccount(accountId: string, data: UpdateAccountInput) {
     const accountRef = doc(db, ACCOUNTS_COLLECTION, accountId);
     return updateDoc(accountRef, {
@@ -61,6 +66,7 @@ export async function updateAccount(accountId: string, data: UpdateAccountInput)
     });
 }
 
+/** Permanently deletes an account. */
 export async function deleteAccount(accountId: string) {
     const accountRef = doc(db, ACCOUNTS_COLLECTION, accountId);
     return deleteDoc(accountRef);

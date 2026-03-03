@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/firebase/auth-context";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useAccounts } from "@/lib/hooks/use-accounts";
 import { subscribeToMeetings, toggleMeetingCompletion } from "@/lib/firebase/meetings";
-import { Meeting } from "@/types";
+import { Meeting, Task } from "@/types";
 import UnifiedItemCard, { UnifiedItem } from "@/components/today/UnifiedItemCard";
 import Loader from "@/components/ui/Loading";
 import { ArrowLeft, ScrollText, Search } from "lucide-react";
@@ -82,18 +82,17 @@ export default function LogbookPage() {
     const sortedItems = unifiedItems.sort((a, b) => {
         const getTime = (item: UnifiedItem) => {
             if (item.type === 'task') {
-                const t = item.originalItem;
-                // Find latest 'done' status change
-                const doneEntries = t.history?.filter((h: any) => h.action === 'status_changed_to_done');
+                const t = item.originalItem as Task;
+                const doneEntries = t.history?.filter(h => h.action === 'status_changed_to_done');
                 if (doneEntries && doneEntries.length > 0) {
-                    const latest = doneEntries.reduce((prev: any, current: any) => {
+                    const latest = doneEntries.reduce((prev, current) => {
                         return (prev.timestamp?.toMillis() || 0) > (current.timestamp?.toMillis() || 0) ? prev : current;
                     });
                     return latest.timestamp?.toMillis() || 0;
                 }
                 return t.updatedAt?.toMillis() || t.createdAt?.toMillis() || 0;
             } else if (item.type === 'meeting') {
-                const m = item.originalItem;
+                const m = item.originalItem as Meeting;
                 return m.updatedAt?.toMillis() || 0;
             }
             return 0;

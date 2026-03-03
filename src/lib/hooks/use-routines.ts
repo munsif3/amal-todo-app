@@ -15,7 +15,7 @@ export function useRoutines(user: User | null | undefined, searchQuery: string =
         if (user) {
             const unsubscribe = subscribeToRoutines(user.uid, (fetchedRoutines) => {
                 setRoutines(fetchedRoutines);
-                if (loading) setLoading(false);
+                setLoading(false);
             });
             return () => unsubscribe();
         } else {

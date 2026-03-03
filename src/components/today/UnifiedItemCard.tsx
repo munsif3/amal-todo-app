@@ -1,11 +1,11 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { Check, Clock, Calendar, Repeat, MoreVertical, MapPin, ListTodo } from "lucide-react";
-import { motion, useMotionValue, useTransform } from "framer-motion";
+import { Check, Clock, Calendar, Repeat, MoreVertical, ListTodo } from "lucide-react";
+import { motion, useMotionValue, useTransform, PanInfo } from "framer-motion";
 import Link from "next/link";
 import { DEFAULT_ACCOUNT_COLOR } from "@/lib/constants";
-import { Timestamp } from "firebase/firestore";
+import { Task, Routine, Meeting } from "@/types";
 
 // Unified Interface for display
 export interface UnifiedItem {
@@ -17,7 +17,7 @@ export interface UnifiedItem {
     isCompleted: boolean;
     accountId?: string;
     areaColor?: string;
-    originalItem: any; // Keep ref to original for actions
+    originalItem: Task | Routine | Meeting;
     badge?: {
         text: string;
         variant: 'default' | 'destructive' | 'warning' | 'neutral';
@@ -32,7 +32,7 @@ interface UnifiedItemCardProps {
     onToggle: (item: UnifiedItem) => void;
     onToggleFrog?: (item: UnifiedItem) => void;
     onToggleTwoMinute?: (item: UnifiedItem) => void;
-    dragControls?: any;
+    dragControls?: import('framer-motion').DragControls;
     isBlocked?: boolean;
 }
 
@@ -48,7 +48,7 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
         ["rgba(209, 184, 148, 0.5)", centerColor, "rgba(138, 154, 91, 0.5)"]
     );
 
-    const handleDragEnd = (_: any, info: any) => {
+    const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
         if (item.isCompleted || isBlocked) return;
         // Meetings are now swipeable
 

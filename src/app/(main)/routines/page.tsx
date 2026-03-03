@@ -138,7 +138,7 @@ export default function RoutinesPage() {
     const filteredRoutines = unifiedRoutines.filter(r => showCompleted || !r.isCompleted);
 
     const handleToggle = (item: UnifiedItem) => {
-        toggleCompletion(item.originalItem);
+        toggleCompletion(item.originalItem as Routine);
     };
 
     return (

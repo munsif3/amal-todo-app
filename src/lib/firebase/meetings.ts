@@ -10,8 +10,7 @@ import {
     onSnapshot,
     orderBy,
     Timestamp,
-    serverTimestamp,
-    limit
+    serverTimestamp
 } from "firebase/firestore";
 import { db } from "./client";
 import { Meeting, CreateMeetingInput, UpdateMeetingInput } from "@/types";
@@ -20,6 +19,7 @@ import { genericConverter } from "./converters";
 const MEETINGS_COLLECTION = "meetings";
 const meetingConverter = genericConverter<Meeting>();
 
+/** Subscribes to meetings from the last 7 days for a user. */
 export function subscribeToMeetings(userId: string, callback: (meetings: Meeting[]) => void) {
     // Ideally we want: future meetings OR (past meetings that are NOT completed)
     // Firestore OR queries are limited.
@@ -43,6 +43,7 @@ export function subscribeToMeetings(userId: string, callback: (meetings: Meeting
     });
 }
 
+/** Fetches a single meeting by ID. */
 export async function getMeeting(meetingId: string) {
     const docRef = doc(db, MEETINGS_COLLECTION, meetingId).withConverter(meetingConverter);
     const docSnap = await getDoc(docRef);
@@ -52,6 +53,7 @@ export async function getMeeting(meetingId: string) {
     return null;
 }
 
+/** Creates a new meeting for a user. */
 export async function createMeeting(userId: string, meetingData: CreateMeetingInput) {
     const newMeeting = {
         ...meetingData,
@@ -67,6 +69,7 @@ export async function createMeeting(userId: string, meetingData: CreateMeetingIn
     return addDoc(collection(db, MEETINGS_COLLECTION), newMeeting);
 }
 
+/** Updates a meeting's fields and refreshes `updatedAt`. */
 export async function updateMeeting(meetingId: string, data: UpdateMeetingInput) {
     const meetingRef = doc(db, MEETINGS_COLLECTION, meetingId);
     return updateDoc(meetingRef, {
@@ -75,6 +78,7 @@ export async function updateMeeting(meetingId: string, data: UpdateMeetingInput)
     });
 }
 
+/** Toggles a meeting's completion status. */
 export async function toggleMeetingCompletion(meetingId: string, isCompleted: boolean) {
     const meetingRef = doc(db, MEETINGS_COLLECTION, meetingId);
     return updateDoc(meetingRef, {
@@ -83,6 +87,7 @@ export async function toggleMeetingCompletion(meetingId: string, isCompleted: bo
     });
 }
 
+/** Permanently deletes a meeting. */
 export async function deleteMeeting(meetingId: string) {
     const meetingRef = doc(db, MEETINGS_COLLECTION, meetingId);
     return deleteDoc(meetingRef);
