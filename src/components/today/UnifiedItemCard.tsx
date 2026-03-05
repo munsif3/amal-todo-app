@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { Check, Clock, Calendar, Repeat, MoreVertical, ListTodo } from "lucide-react";
+import { Check, Clock, Calendar, Repeat, MoreVertical, ListTodo, Trash2 } from "lucide-react";
 import { motion, useMotionValue, useTransform, PanInfo } from "framer-motion";
 import Link from "next/link";
 import { DEFAULT_ACCOUNT_COLOR } from "@/lib/constants";
@@ -12,8 +12,8 @@ export interface UnifiedItem {
     id: string;
     type: 'task' | 'routine' | 'meeting';
     title: string;
-    subtitle?: string; // description for tasks, notes for meetings?
-    time?: Date; // deadline for tasks, startTime for meetings
+    subtitle?: string;
+    time?: Date;
     isCompleted: boolean;
     accountId?: string;
     areaColor?: string;
@@ -24,6 +24,7 @@ export interface UnifiedItem {
     };
     isFrog?: boolean;
     isTwoMinute?: boolean;
+    isPriority?: boolean;
     subtasksCount?: { completed: number; total: number };
 }
 
@@ -32,11 +33,13 @@ interface UnifiedItemCardProps {
     onToggle: (item: UnifiedItem) => void;
     onToggleFrog?: (item: UnifiedItem) => void;
     onToggleTwoMinute?: (item: UnifiedItem) => void;
+    onTogglePriority?: (item: UnifiedItem) => void;
+    onDelete?: (item: UnifiedItem) => void;
     dragControls?: import('framer-motion').DragControls;
     isBlocked?: boolean;
 }
 
-export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggleTwoMinute, isBlocked, dragControls }: UnifiedItemCardProps) {
+export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggleTwoMinute, onTogglePriority, onDelete, isBlocked, dragControls }: UnifiedItemCardProps) {
     const x = useMotionValue(0);
     const { resolvedTheme } = useTheme();
     const centerColor = resolvedTheme === 'dark' ? '#242424' : '#ffffff';
@@ -50,7 +53,6 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
 
     const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
         if (item.isCompleted || isBlocked) return;
-        // Meetings are now swipeable
 
         if (info.offset.x > 100) {
             if (!item.isCompleted && item.subtasksCount && item.subtasksCount.completed < item.subtasksCount.total) {
@@ -88,15 +90,13 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
 
     // Badge styling helpers
     const getBadgeStyle = (variant: string) => {
-        // "Classy" styles: subtle backgrounds, clear text, borders
         switch (variant) {
             case 'destructive':
-                // Overdue: Subtle red background, red text
                 return {
-                    backgroundColor: 'rgba(239, 68, 68, 0.15)', // slightly less diluted
+                    backgroundColor: 'rgba(239, 68, 68, 0.15)',
                     color: 'var(--destructive)',
                     border: '1px solid rgba(239, 68, 68, 0.3)',
-                    fontWeight: 700 // Make text bolder
+                    fontWeight: 700
                 };
             case 'warning':
                 return {
@@ -105,7 +105,6 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
                     border: '1px solid rgba(234, 179, 8, 0.2)'
                 };
             case 'neutral':
-                // No Deadline: Minimalist grey
                 return {
                     backgroundColor: 'rgba(120, 120, 120, 0.1)',
                     color: 'var(--muted-foreground)',
@@ -121,6 +120,14 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
 
     const badgeStyle = item.badge ? getBadgeStyle(item.badge.variant) : {};
 
+    const handleDelete = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!onDelete) return;
+        if (confirm(`Delete "${item.title}"? This cannot be undone.`)) {
+            onDelete(item);
+        }
+    };
+
     return (
         <div style={{ position: 'relative', marginBottom: '0.75rem', overflow: 'hidden', borderRadius: 'var(--radius)' }}>
             {/* Background for swipe */}
@@ -133,7 +140,6 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
                     <Clock size={20} color="var(--status-waiting)" />
                 </div>
             )}
-            {/* Allow swipe background for meetings too if we are enabling drag, effectively treating them like tasks */}
             {item.type === 'meeting' && (
                 <div style={{
                     position: 'absolute', inset: 0, display: 'flex', justifyContent: 'flex-start', alignItems: 'center',
@@ -143,7 +149,6 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
                 </div>
             )}
 
-
             <motion.div
                 className="mobile-card-padding"
                 style={{
@@ -151,10 +156,10 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
                     background: centerColor,
                     padding: '1rem',
                     borderRadius: 'var(--radius)',
-                    borderTop: item.isFrog && !item.isCompleted ? '2px solid var(--accent-sage)' : '1px solid var(--border)',
-                    borderRight: item.isFrog && !item.isCompleted ? '2px solid var(--accent-sage)' : '1px solid var(--border)',
-                    borderBottom: item.isFrog && !item.isCompleted ? '2px solid var(--accent-sage)' : '1px solid var(--border)',
-                    boxShadow: item.isFrog && !item.isCompleted ? '0 0 15px rgba(138, 154, 91, 0.2)' : 'none',
+                    borderTop: item.isFrog && !item.isCompleted ? '2px solid var(--accent-sage)' : item.isPriority && !item.isCompleted ? '2px solid var(--primary)' : '1px solid var(--border)',
+                    borderRight: item.isFrog && !item.isCompleted ? '2px solid var(--accent-sage)' : item.isPriority && !item.isCompleted ? '2px solid var(--primary)' : '1px solid var(--border)',
+                    borderBottom: item.isFrog && !item.isCompleted ? '2px solid var(--accent-sage)' : item.isPriority && !item.isCompleted ? '2px solid var(--primary)' : '1px solid var(--border)',
+                    boxShadow: item.isFrog && !item.isCompleted ? '0 0 15px rgba(138, 154, 91, 0.2)' : item.isPriority && !item.isCompleted ? '0 0 12px rgba(var(--primary-rgb, 0, 0, 0), 0.1)' : 'none',
                     borderLeft: item.areaColor ? `4px solid ${item.areaColor}` : (item.accountId ? `4px solid ${DEFAULT_ACCOUNT_COLOR}` : `4px solid var(--border)`),
                     position: 'relative',
                     zIndex: 1,
@@ -173,7 +178,6 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
                 <motion.button
                     onClick={(e) => {
                         e.stopPropagation();
-                        // Allow toggling via click too
                         if (!item.isCompleted && item.subtasksCount && item.subtasksCount.completed < item.subtasksCount.total) {
                             alert(`Cannot complete task: ${item.subtasksCount.total - item.subtasksCount.completed} requirement(s) remaining.`);
                             return;
@@ -184,7 +188,7 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
                     style={{
                         width: '24px',
                         height: '24px',
-                        borderRadius: '50%', // Circular for all
+                        borderRadius: '50%',
                         border: `2px solid ${item.isCompleted ? 'var(--status-done)' : 'var(--border)'}`,
                         backgroundColor: item.isCompleted ? 'var(--status-done)' : 'transparent',
                         display: 'flex',
@@ -207,7 +211,6 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
                         </motion.div>
                     )}
                     {item.type === 'routine' && !item.isCompleted && <Repeat size={14} className="text-muted-foreground" />}
-                    {/* Meetings now look empty when not done, like tasks */}
                 </motion.button>
 
                 <div style={{ flex: 1, minWidth: 0, paddingRight: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -228,9 +231,40 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
                     </h3>
 
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
+                        {item.isPriority && !item.isCompleted && (
+                            <span style={{
+                                fontSize: '0.65rem',
+                                fontWeight: '700',
+                                padding: '0.1rem 0.4rem',
+                                backgroundColor: 'var(--bg-subtle)',
+                                color: 'var(--primary)',
+                                borderRadius: '4px',
+                                border: '1px solid var(--border)',
+                                whiteSpace: 'nowrap',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.2rem',
+                                flexShrink: 0,
+                            }} title="Priority Task">
+                                ⭐ Priority
+                            </span>
+                        )}
                         {item.isFrog && !item.isCompleted && (
-                            <span style={{ fontSize: '1.1rem', lineHeight: '1', filter: 'drop-shadow(0 0 4px rgba(138, 154, 91, 0.5))' }} title="Frog Task">
-                                🐸
+                            <span style={{
+                                fontSize: '0.65rem',
+                                fontWeight: '700',
+                                padding: '0.1rem 0.4rem',
+                                backgroundColor: 'rgba(138, 154, 91, 0.15)',
+                                color: 'var(--status-next, #8a9a5b)',
+                                borderRadius: '4px',
+                                border: '1px solid rgba(138, 154, 91, 0.3)',
+                                whiteSpace: 'nowrap',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.2rem',
+                                flexShrink: 0,
+                            }} title="Frog Task">
+                                🐸 Frog
                             </span>
                         )}
                         {item.badge && !item.isCompleted && (
@@ -311,13 +345,35 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
                             overflow: 'hidden',
                             wordBreak: 'break-word'
                         }}>
-                            {item.subtitle}
+                            {item.subtitle.replace(/<[^>]*>?/gm, ' ')}
                         </span>
                     )}
                 </div>
 
-                {/* Actions / Edit Link */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, paddingLeft: '0.5rem' }}>
+                {/* Actions: Delete + Edit Link */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0, paddingLeft: '0.25rem' }}>
+                    {onDelete && !item.isCompleted && (
+                        <button
+                            type="button"
+                            onClick={handleDelete}
+                            title="Delete"
+                            style={{
+                                opacity: 0.3,
+                                padding: '0.5rem',
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                color: 'var(--destructive)',
+                                transition: 'opacity 0.15s',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.opacity = '0.8')}
+                            onMouseLeave={e => (e.currentTarget.style.opacity = '0.3')}
+                        >
+                            <Trash2 size={15} />
+                        </button>
+                    )}
                     <Link
                         href={`/edit?type=${item.type}&id=${item.id}`}
                         style={{ opacity: 0.3, padding: '0.5rem' }}

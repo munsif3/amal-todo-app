@@ -167,6 +167,15 @@ export async function toggleTaskTwoMinute(taskId: string, isTwoMinute: boolean) 
     });
 }
 
+/** Toggles the daily priority flag on a task. */
+export async function toggleTaskPriority(taskId: string, isPriority: boolean) {
+    const taskRef = doc(db, TASKS_COLLECTION, taskId);
+    return updateDoc(taskRef, {
+        isPriority,
+        updatedAt: serverTimestamp(),
+    });
+}
+
 /** Permanently deletes a task. */
 export async function deleteTask(taskId: string) {
     const taskRef = doc(db, TASKS_COLLECTION, taskId);

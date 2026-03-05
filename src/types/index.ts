@@ -35,6 +35,7 @@ export interface Task {
     routineId?: string | null;
     isFrog?: boolean;
     isTwoMinute?: boolean;
+    isPriority?: boolean;
     order?: number;
     createdAt: Timestamp;
     updatedAt: Timestamp;
@@ -97,6 +98,7 @@ export interface UserProfile {
     preferences: {
         theme: 'light' | 'dark';
         notifications: boolean;
+        defaultTaskTime?: string; // HH:mm format, e.g. '09:30'
     };
 }
 

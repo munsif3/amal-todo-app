@@ -1,17 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/firebase/auth-context";
 import { subscribeToAccounts } from "@/lib/firebase/accounts";
 import { createTask, updateTask } from "@/lib/firebase/tasks";
 import { createRoutine, updateRoutine } from "@/lib/firebase/routines";
 import { createMeeting, updateMeeting } from "@/lib/firebase/meetings";
 import { createNote, updateNote } from "@/lib/firebase/notes";
-import { Account, Task, Routine, Meeting, Note, TaskStatus, Subtask, UpdateMeetingInput } from "@/types";
+import { subscribeToUserProfile } from "@/lib/firebase/user_profile";
+import { Account, Task, Routine, Meeting, Note, TaskStatus, Subtask, UpdateMeetingInput, UserProfile } from "@/types";
 import { Input, Textarea, Button } from "@/components/ui/Form";
 import AreaSelector from "@/components/ui/AreaSelector";
+import RichTextArea from "@/components/ui/RichTextArea";
 import { Timestamp } from "firebase/firestore";
 import { Calendar, Repeat, Book, Video, CheckSquare, ArrowLeft, Plus, X, User } from "lucide-react";
+import { useWarnIfUnsavedChanges } from "@/lib/hooks/use-warn-if-unsaved";
 
 type CaptureMode = 'TASK' | 'ROUTINE' | 'MEETING' | 'NOTE';
 
@@ -23,7 +27,18 @@ interface UniversalItemFormProps {
     itemId?: string;
 }
 
-export default function UniversalItemForm({
+/** Build a datetime-local string defaulting to the given HH:mm time, on
+ *  tomorrow's date (for new items) or today's date if editing. */
+function buildDateTimeString(daysOffset: number, hhMm: string) {
+    const d = new Date();
+    d.setDate(d.getDate() + daysOffset);
+    const [hh, mm] = hhMm.split(':').map(Number);
+    d.setHours(hh, mm, 0, 0);
+    const offset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - offset).toISOString().slice(0, 16);
+}
+
+function UniversalItemFormInner({
     onClose,
     onSuccess,
     initialMode = 'TASK',
@@ -31,9 +46,18 @@ export default function UniversalItemForm({
     itemId
 }: UniversalItemFormProps) {
     const { user } = useAuth();
-    const [mode, setMode] = useState<CaptureMode>(initialMode);
+    const searchParams = useSearchParams();
+    const [mode, setMode] = useState<CaptureMode>(() => {
+        // If no itemId (new item), read ?mode= query param for default selection
+        if (!itemId) {
+            const qMode = searchParams?.get('mode') as CaptureMode;
+            if (qMode && ['TASK', 'ROUTINE', 'MEETING', 'NOTE'].includes(qMode)) return qMode;
+        }
+        return initialMode;
+    });
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -42,16 +66,11 @@ export default function UniversalItemForm({
     // Gamification State (Tasks only)
     const [isFrog, setIsFrog] = useState(false);
     const [isTwoMinute, setIsTwoMinute] = useState(false);
+    const [isPriority, setIsPriority] = useState(false);
     const [subtasks, setSubtasks] = useState<Subtask[]>([]);
 
-    // Specific State
-    const [deadline, setDeadline] = useState(() => {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(9, 30, 0, 0);
-        const offset = tomorrow.getTimezoneOffset() * 60000;
-        return (new Date(tomorrow.getTime() - offset)).toISOString().slice(0, 16);
-    });
+    // Build default deadline based on profile defaultTaskTime
+    const [deadline, setDeadline] = useState(() => buildDateTimeString(0, '09:30'));
 
     // Routine State
     const [routineSchedule, setRoutineSchedule] = useState("daily");
@@ -60,13 +79,7 @@ export default function UniversalItemForm({
     const [routineTime, setRoutineTime] = useState("09:30");
 
     // Meeting State
-    const [meetingTime, setMeetingTime] = useState(() => {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(9, 30, 0, 0);
-        const offset = tomorrow.getTimezoneOffset() * 60000;
-        return (new Date(tomorrow.getTime() - offset)).toISOString().slice(0, 16);
-    });
+    const [meetingTime, setMeetingTime] = useState(() => buildDateTimeString(0, '09:30'));
 
     // Note State
     const [noteType, setNoteType] = useState<'text' | 'checklist'>('text');
@@ -79,19 +92,40 @@ export default function UniversalItemForm({
         }
     }, [user]);
 
-    // Initialize Data from Props
+    // Subscribe to User Profile for default task time
+    useEffect(() => {
+        if (!user) return;
+        const unsubscribe = subscribeToUserProfile(user.uid, (profile) => {
+            setUserProfile(profile);
+            if (profile && !itemId) {
+                const dt = profile.preferences?.defaultTaskTime || '09:30';
+                // In case it comes back with a Date from the previous test, strip the date
+                const timeStr = dt.includes('T') ? dt.split('T')[1].slice(0, 5) : dt;
+
+                setDeadline(buildDateTimeString(0, timeStr));
+                setMeetingTime(buildDateTimeString(0, timeStr));
+                setRoutineTime(timeStr);
+            }
+        });
+        return () => unsubscribe();
+    }, [user, itemId]);
+
+    // Track unsaved changes
+    const hasUnsavedChanges = title.trim().length > 0 || (description && description.trim().length > 0) || false;
+    useWarnIfUnsavedChanges(hasUnsavedChanges);
+
+    // Initialize Data from Props (edit mode)
     useEffect(() => {
         if (!initialData) return;
 
-        // Common fields shared by all modes
         setTitle(initialData.title || "");
         setAccountId(initialData.accountId || "");
 
-        // Mode-specific field initialization
         if (mode === 'TASK') {
             setDescription(initialData.description || "");
             setIsFrog(initialData.isFrog || false);
             setIsTwoMinute(initialData.isTwoMinute || false);
+            setIsPriority(initialData.isPriority || false);
             setSubtasks(initialData.subtasks || []);
             if (initialData.deadline) {
                 const date = initialData.deadline.toDate();
@@ -102,7 +136,7 @@ export default function UniversalItemForm({
             setRoutineSchedule(initialData.schedule || "daily");
             setRoutineDays(initialData.days || []);
             setRoutineMonthDay(initialData.monthDay || 1);
-            setRoutineTime(initialData.time || "");
+            setRoutineTime(initialData.time || "09:30");
         } else if (mode === 'MEETING') {
             if (initialData.startTime) {
                 const date = initialData.startTime.toDate();
@@ -130,6 +164,7 @@ export default function UniversalItemForm({
                     deadline: deadline ? Timestamp.fromDate(new Date(deadline)) : null,
                     isFrog,
                     isTwoMinute,
+                    isPriority,
                     subtasks
                 };
                 if (itemId) await updateTask(itemId, data);
@@ -152,16 +187,10 @@ export default function UniversalItemForm({
                     title,
                     accountId: accountId || null,
                     startTime: meetingTime ? Timestamp.fromDate(new Date(meetingTime)) : Timestamp.now(),
-                    notes: { before: description, during: "", after: "" }, // Preserve existing notes if editing? 
-                    // Ideally for meetings we probably want to support updating specific note fields, 
-                    // but for this "Unified" form we likely only edit the 'before/description' part or basic details.
-                    // For full meeting notes, maybe we need the dedicated page?
-                    // Let's assume description maps to 'before' for now.
+                    notes: { before: description, during: "", after: "" },
                 };
 
                 if (itemId) {
-                    // Fetch existing to merge notes? or just update title/time/account
-                    // For simplicity, let's just update the known fields. 
                     const updateData: Partial<UpdateMeetingInput> = {
                         title: data.title,
                         accountId: data.accountId,
@@ -191,8 +220,6 @@ export default function UniversalItemForm({
             }
 
             if (onSuccess) onSuccess();
-            // We usually don't close automatically if just editing? Matches 'New' flow safely.
-            // If editing, router.back() (handled by onSuccess in wrapper) works.
         } catch (error) {
             console.error("Error saving item:", error);
         } finally {
@@ -200,7 +227,15 @@ export default function UniversalItemForm({
         }
     };
 
-
+    const handleClose = () => {
+        if (!onClose) return;
+        if (hasUnsavedChanges) {
+            if (!window.confirm("You have unsaved changes. Are you sure you want to discard them?")) {
+                return;
+            }
+        }
+        onClose();
+    };
 
     return (
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'slideIn 0.3s ease' }}>
@@ -221,12 +256,11 @@ export default function UniversalItemForm({
                 />
             </div>
 
-            {/* 2. Primary Date/Time Input (Acts as Deadline for Task, StartTime for Meeting) */}
-            {/* For Routine, we might not need this if we have the schedule, or it could be "Start Date" */}
+            {/* 2. Primary Date/Time Input */}
             {mode !== 'ROUTINE' && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <span style={{ opacity: 0.5 }}>
-                        {mode === 'MEETING' ? <Video size={18} /> : mode === 'TASK' ? <Calendar size={18} /> : <Calendar size={18} />}
+                        {mode === 'MEETING' ? <Video size={18} /> : <Calendar size={18} />}
                     </span>
                     <Input
                         type="datetime-local"
@@ -241,7 +275,7 @@ export default function UniversalItemForm({
                 </div>
             )}
 
-            {/* 3. Mode Selection (Radio Buttons) */}
+            {/* 3. Mode Selection (Radio Buttons — new items only) */}
             {!itemId && (
                 <div style={{ display: 'flex', gap: '1.5rem', padding: '0.5rem 0', opacity: 0.9 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '500' }}>
@@ -279,14 +313,11 @@ export default function UniversalItemForm({
                 </div>
             )}
 
-            {/* 4. Dynamic Fields based on Selection */}
-
-            {/* Routine Schedule */}
+            {/* 4. Routine Schedule */}
             {mode === 'ROUTINE' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem', backgroundColor: 'var(--bg-subtle)', borderRadius: '8px', borderLeft: '3px solid var(--primary)', animation: 'slideIn 0.2s ease' }}>
                     <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--foreground)' }}>Routine Schedule</h4>
 
-                    {/* Time Input (Optional) */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <span style={{ opacity: 0.5 }}><Calendar size={18} /></span>
                         <Input
@@ -312,7 +343,6 @@ export default function UniversalItemForm({
                         </select>
                     </div>
 
-                    {/* Weekly Day Selector */}
                     {routineSchedule === 'weekly' && (
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', padding: '0.5rem 0' }}>
                             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => {
@@ -347,7 +377,6 @@ export default function UniversalItemForm({
                         </div>
                     )}
 
-                    {/* Monthly Day Selector */}
                     {routineSchedule === 'monthly' && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', paddingLeft: '2.5rem' }}>
                             <span style={{ fontSize: '0.875rem', opacity: 0.7 }}>On the</span>
@@ -366,7 +395,7 @@ export default function UniversalItemForm({
                 </div>
             )}
 
-            {/* 5. Common: Area Selector */}
+            {/* 5. Area Selector */}
             <AreaSelector
                 accounts={accounts}
                 selectedAccountId={accountId}
@@ -374,18 +403,18 @@ export default function UniversalItemForm({
                 label="Assign Area"
             />
 
-            {/* 6. Common: Description */}
-            <Textarea
-                placeholder={
-                    mode === 'MEETING' ? "Meeting agenda/notes..." :
-                        "Details, context, or notes..."
-                }
+            {/* 6. Description / Notes — RichTextArea */}
+            <RichTextArea
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                style={{ minHeight: '120px' }}
+                onChange={setDescription}
+                placeholder={
+                    mode === 'MEETING' ? "Meeting agenda/notes... (supports **markdown**)" :
+                        "Details, context, or notes... (supports **markdown**)"
+                }
+                minHeight="120px"
             />
 
-            {/* Subtasks / Requirements (Tasks Only) */}
+            {/* 7. Subtasks / Requirements (Tasks Only) */}
             {mode === 'TASK' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem', backgroundColor: 'var(--bg-subtle)', borderRadius: '8px', borderLeft: '3px solid var(--primary)' }}>
                     <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--foreground)' }}>Requirements</h4>
@@ -452,9 +481,22 @@ export default function UniversalItemForm({
                 </div>
             )}
 
-            {/* Gamification Toggles (Tasks Only) */}
+            {/* 8. Gamification + Priority Toggles (Tasks Only) */}
             {mode === 'TASK' && (
-                <div className="mobile-wrap" style={{ display: 'flex', gap: '1rem', padding: '1rem', backgroundColor: 'var(--bg-subtle)', borderRadius: '8px', borderLeft: '3px solid var(--accent-sage)' }}>
+                <div className="mobile-wrap" style={{ display: 'flex', gap: '1rem', padding: '1rem', backgroundColor: 'var(--bg-subtle)', borderRadius: '8px', borderLeft: '3px solid var(--accent-sage)', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input
+                            type="checkbox"
+                            id="isPriority"
+                            checked={isPriority}
+                            onChange={(e) => setIsPriority(e.target.checked)}
+                            style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
+                        />
+                        <label htmlFor="isPriority" style={{ fontSize: '0.875rem', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            ⭐ Priority Today
+                        </label>
+                    </div>
+
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <input
                             type="checkbox"
@@ -484,12 +526,23 @@ export default function UniversalItemForm({
             )}
 
             {/* Actions */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                <Button type="submit" disabled={!title || isSubmitting} isLoading={isSubmitting} style={{ width: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem', gap: '1rem' }}>
+                <Button type="button" variant="secondary" onClick={handleClose} disabled={isSubmitting} style={{ flex: 1 }}>
+                    Cancel
+                </Button>
+                <Button type="submit" disabled={!title || isSubmitting} isLoading={isSubmitting} style={{ flex: 1 }}>
                     {itemId ? "Save Changes" : `Create ${mode === 'TASK' ? 'Item' : mode.charAt(0) + mode.slice(1).toLowerCase()}`}
                 </Button>
             </div>
 
         </form>
+    );
+}
+
+export default function UniversalItemForm(props: UniversalItemFormProps) {
+    return (
+        <Suspense fallback={null}>
+            <UniversalItemFormInner {...props} />
+        </Suspense>
     );
 }

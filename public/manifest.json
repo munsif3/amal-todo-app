@@ -1,0 +1,17 @@
+{
+    "name": "AMAL | Intentional Action",
+    "short_name": "AMAL",
+    "description": "A calm, minimalist productivity app built for focus.",
+    "start_url": "/today",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#ffffff",
+    "icons": [
+        {
+            "src": "/icon.svg",
+            "sizes": "192x192 512x512",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        }
+    ]
+}

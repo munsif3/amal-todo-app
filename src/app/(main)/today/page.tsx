@@ -11,7 +11,7 @@ import { useTasks } from "@/lib/hooks/use-tasks";
 import { useRoutines } from "@/lib/hooks/use-routines";
 import { useAccounts } from "@/lib/hooks/use-accounts";
 import { subscribeToMeetings, toggleMeetingCompletion } from "@/lib/firebase/meetings";
-import { createTask, toggleTaskFrog, toggleTaskTwoMinute, bulkUpdateTaskDeadline } from "@/lib/firebase/tasks";
+import { createTask, toggleTaskFrog, toggleTaskTwoMinute, toggleTaskPriority, bulkUpdateTaskDeadline, deleteTask } from "@/lib/firebase/tasks";
 import { Timestamp } from "firebase/firestore";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import confetti from "canvas-confetti";
@@ -30,6 +30,7 @@ export default function TodayPage() {
     const [quickTaskTitle, setQuickTaskTitle] = useState("");
     const [isCreatingQuickTask, setIsCreatingQuickTask] = useState(false);
     const [isQuickTwoMinute, setIsQuickTwoMinute] = useState(false);
+    const [isQuickPriority, setIsQuickPriority] = useState(false);
     const [isFocusMode, setIsFocusMode] = useState(false);
     const [showOnlyTwoMinute, setShowOnlyTwoMinute] = useState(false);
     const [isSnoozingAll, setIsSnoozingAll] = useState(false);
@@ -48,7 +49,6 @@ export default function TodayPage() {
     useEffect(() => {
         if (!user) return;
         const unsubscribe = subscribeToMeetings(user.uid, (data) => {
-            // Fetch all meetings, then we can filter in-memory for Today vs Future
             setMeetings(data);
             setLoadingMeetings(false);
         });
@@ -125,15 +125,13 @@ export default function TodayPage() {
         if (isFuture(date)) {
             futureMeetings.push(item);
         } else {
-            // Past (Overdue) + Today
-            // We show all past meetings as "Overdue" or just "Past" items in the main list
             if (date && date <= endOfToday) {
                 todayMeetings.push(item);
             }
         }
     });
 
-    // 2. Routines (Always "Today" as useRoutines returns today's routines)
+    // 2. Routines (Today only)
     const todayRoutinesItems: UnifiedItem[] = [];
     todaysRoutines.forEach(r => {
         const isCompleted = isRoutineCompletedToday(r);
@@ -144,18 +142,6 @@ export default function TodayPage() {
             date.setHours(hours, minutes, 0, 0);
             itemTime = date;
         }
-
-        // Only show separate completed items if showCompleted is true AND it is completed?
-        // OR standard behavior: "Show/Hide Completed" often means HIDING them from the main list if completed.
-        // But for Routines, we implemented "Hide by default, Show if toggled".
-        // Today view currently SHOWS completed routines (checked) mixed in?
-        // Wait, `isCompleted` depends on `isRoutineCompletedToday`.
-        // Let's align with the user request: "add the show hide for completed tasks for today".
-        // This implies they want to toggle visibility of completed items.
-
-        // Revised Logic:
-        // - If !showCompleted AND item is completed -> Hide it.
-        // - If showCompleted -> Show everything.
 
         if (!showCompleted && isCompleted) return;
 
@@ -172,7 +158,6 @@ export default function TodayPage() {
     });
 
     // 3. Active Tasks
-    // Split into Today (includes Overdue/No Date) and Future
     const todayTasksItems: UnifiedItem[] = [];
     const futureTasksItems: UnifiedItem[] = [];
 
@@ -183,7 +168,6 @@ export default function TodayPage() {
         if (!date) {
             badge = { text: 'No Deadline', variant: 'neutral' };
         } else if (date < today) {
-            // Overdue
             const d1 = new Date(today);
             const d2 = new Date(date);
             d2.setHours(0, 0, 0, 0);
@@ -210,6 +194,7 @@ export default function TodayPage() {
             areaColor: accounts.find(a => a.id === t.accountId)?.color,
             isFrog: t.isFrog,
             isTwoMinute: t.isTwoMinute,
+            isPriority: t.isPriority,
             originalItem: t,
             badge: badge,
             subtasksCount: t.subtasks && t.subtasks.length > 0 ? {
@@ -221,7 +206,6 @@ export default function TodayPage() {
         if (isFuture(date)) {
             futureTasksItems.push(item);
         } else {
-            // Today, Overdue, or No Date
             todayTasksItems.push(item);
         }
     });
@@ -230,9 +214,7 @@ export default function TodayPage() {
     const completedTodayItems: UnifiedItem[] = [];
     if (showCompleted) {
         finishedTasks.forEach(t => {
-            // Check if completed today
             const getCompletionDate = (task: Task) => {
-                // Try history first
                 const doneEntries = task.history?.filter((h: { action: string }) => h.action === 'status_changed_to_done');
                 if (doneEntries && doneEntries.length > 0) {
                     const latest = doneEntries.reduce((prev, current) => {
@@ -240,7 +222,6 @@ export default function TodayPage() {
                     });
                     return latest.timestamp?.toDate();
                 }
-                // Fallback to updatedAt
                 return task.updatedAt?.toDate();
             };
 
@@ -251,7 +232,7 @@ export default function TodayPage() {
                     type: 'task',
                     title: t.title,
                     subtitle: t.description,
-                    time: t.deadline?.toDate(), // Keep original deadline for sorting context? Or completion time? keeping deadline is standard for "what was due"
+                    time: t.deadline?.toDate(),
                     isCompleted: true,
                     accountId: t.accountId || undefined,
                     areaColor: accounts.find(a => a.id === t.accountId)?.color,
@@ -268,14 +249,19 @@ export default function TodayPage() {
     }
 
     // --- Sort Lists ---
+    // Priority order: Frog > Priority > time > type
     const sortItems = (items: UnifiedItem[]) => {
         return items.sort((a, b) => {
             // Completion pushes to bottom
             if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;
 
-            // Frog pushes to top (if not completed)
+            // Frog pushes to very top
             if (a.isFrog && !a.isCompleted && (!b.isFrog || b.isCompleted)) return -1;
             if (b.isFrog && !b.isCompleted && (!a.isFrog || a.isCompleted)) return 1;
+
+            // Priority comes next (above non-frog tasks)
+            if (a.isPriority && !a.isCompleted && !b.isPriority) return -1;
+            if (b.isPriority && !b.isCompleted && !a.isPriority) return 1;
 
             // Time comparison
             if (a.time && b.time) return a.time.getTime() - b.time.getTime();
@@ -318,6 +304,19 @@ export default function TodayPage() {
         }
     };
 
+    const handleTogglePriority = async (item: UnifiedItem) => {
+        if (item.type === 'task') {
+            await toggleTaskPriority(item.id, !item.isPriority);
+        }
+    };
+
+    const handleDelete = async (item: UnifiedItem) => {
+        if (item.type === 'task') {
+            await deleteTask(item.id);
+        }
+        // Routines and meetings have their own delete flow via the edit page
+    };
+
     const handleToggle = (item: UnifiedItem) => {
         const isNowCompleting = !item.isCompleted;
 
@@ -334,7 +333,6 @@ export default function TodayPage() {
 
             const remainingIncomplete = unifiedToday.filter(i => !i.isCompleted && i.id !== item.id);
 
-            // Special reward for eating the frog early!
             if (item.isFrog) {
                 const now = new Date();
                 if (now.getHours() < 12) {
@@ -342,7 +340,7 @@ export default function TodayPage() {
                         confetti({
                             particleCount: 150,
                             spread: 100,
-                            colors: ['#8a9a5b', '#556b2f', '#FFD700'], // Sage, Olive, Gold
+                            colors: ['#8a9a5b', '#556b2f', '#FFD700'],
                             origin: { y: 0.6 }
                         });
                     }, 100);
@@ -378,10 +376,12 @@ export default function TodayPage() {
                 title: quickTaskTitle.trim(),
                 deadline: Timestamp.fromDate(endOfToday),
                 status: "next",
-                isTwoMinute: isQuickTwoMinute
+                isTwoMinute: isQuickTwoMinute,
+                isPriority: isQuickPriority
             });
             setQuickTaskTitle("");
-            setIsQuickTwoMinute(false); // Reset after use
+            setIsQuickTwoMinute(false);
+            setIsQuickPriority(false);
         } catch (error) {
             console.error("Failed to create quick task", error);
         } finally {
@@ -592,6 +592,8 @@ export default function TodayPage() {
                             onToggle={handleToggle}
                             onToggleFrog={handleToggleFrog}
                             onToggleTwoMinute={handleToggleTwoMinute}
+                            onTogglePriority={handleTogglePriority}
+                            onDelete={handleDelete}
                         />
                     ))}
                 </div>
@@ -608,6 +610,8 @@ export default function TodayPage() {
                                 onToggle={handleToggle}
                                 onToggleFrog={handleToggleFrog}
                                 onToggleTwoMinute={handleToggleTwoMinute}
+                                onTogglePriority={handleTogglePriority}
+                                onDelete={handleDelete}
                             />
                         ))}
                     </div>
@@ -648,10 +652,32 @@ export default function TodayPage() {
                             justifyContent: 'center',
                             cursor: 'pointer',
                             transition: 'all 0.2s',
+                            flexShrink: 0
                         }}
                         title="Mark as 2-Minute Task"
                     >
                         <Zap size={20} />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setIsQuickPriority(!isQuickPriority)}
+                        style={{
+                            width: '44px',
+                            height: '44px',
+                            borderRadius: '50%',
+                            backgroundColor: isQuickPriority ? 'rgba(var(--primary-rgb, 0, 0, 0), 0.1)' : 'var(--bg-subtle)',
+                            border: isQuickPriority ? '1px solid var(--primary)' : '1px solid var(--border)',
+                            color: isQuickPriority ? 'var(--primary)' : 'var(--muted-foreground)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            flexShrink: 0
+                        }}
+                        title="Mark as Priority"
+                    >
+                        <span style={{ fontSize: '1.2rem', lineHeight: 1, filter: isQuickPriority ? 'grayscale(0)' : 'grayscale(1) opacity(0.5)' }}>⭐</span>
                     </button>
                     <button
                         type="submit"
