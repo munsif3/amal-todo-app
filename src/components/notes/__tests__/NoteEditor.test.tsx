@@ -29,7 +29,7 @@ vi.mock('../NoteToolbar', () => ({
 vi.mock('../NoteHeader', () => ({
     NoteHeader: ({ title, mode, setMode }: any) => (
         <div data-testid="note-header">
-            <input value={title} readOnly />
+            <input value={title} readOnly data-testid="note-title-input" />
             <button onClick={() => setMode(mode === 'text' ? 'checklist' : 'text')}>
                 Switch Mode
             </button>
@@ -43,8 +43,38 @@ vi.mock('../ChecklistEditor', () => ({
     ChecklistEditor: () => <div data-testid="checklist-editor">Checklist Editor</div>,
 }));
 
-describe('NoteEditor Component', () => {
-    const mockActions = {
+/** A complete, valid mock return value for useNoteEditor */
+const buildMockHookReturn = (overrides: Record<string, unknown> = {}) => ({
+    metadata: {
+        title: 'Test Note',
+        setTitle: vi.fn(),
+        accountId: 'acc-1',
+        setAccountId: vi.fn(),
+        isPinned: false,
+        setIsPinned: vi.fn(),
+        accounts: [],
+        ...((overrides.metadata as object) ?? {}),
+    },
+    modeState: {
+        mode: 'text',
+        setMode: vi.fn(),
+        ...((overrides.modeState as object) ?? {}),
+    },
+    contentState: {
+        content: '',
+        setContent: vi.fn(),
+        ...((overrides.contentState as object) ?? {}),
+    },
+    checklistState: {
+        items: [],
+        addItem: vi.fn(),
+        updateItem: vi.fn(),
+        toggleItem: vi.fn(),
+        deleteItem: vi.fn(),
+        reorderItems: vi.fn(),
+        ...((overrides.checklistState as object) ?? {}),
+    },
+    actions: {
         save: vi.fn(),
         remove: vi.fn(),
         isSaving: false,
@@ -53,79 +83,73 @@ describe('NoteEditor Component', () => {
         isDirty: false,
         error: null,
         dismissError: vi.fn(),
-    };
+        ...((overrides.actions as object) ?? {}),
+    },
+});
 
-    const mockMetadata = {
-        title: 'Test Note',
-        setTitle: vi.fn(),
-        accountId: 'acc-1',
-        setAccountId: vi.fn(),
-        isPinned: false,
-        setIsPinned: vi.fn(),
-        accounts: [],
-    };
-
-    const mockModeState = {
-        mode: 'text',
-        setMode: vi.fn(),
-    };
-
-    const mockContentState = {
-        content: '',
-        setContent: vi.fn(),
-    };
-
-    const mockChecklistState = {
-        items: [],
-        addItem: vi.fn(),
-        updateItem: vi.fn(),
-        toggleItem: vi.fn(),
-        deleteItem: vi.fn(),
-        reorderItems: vi.fn(),
-    };
-
+describe('NoteEditor Component', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        (useNoteEditorHook.useNoteEditor as any).mockReturnValue({
-            metadata: mockMetadata,
-            modeState: mockModeState,
-            contentState: mockContentState,
-            checklistState: mockChecklistState,
-            actions: mockActions,
-        });
+        (useNoteEditorHook.useNoteEditor as ReturnType<typeof vi.fn>).mockReturnValue(
+            buildMockHookReturn()
+        );
     });
 
-    it('should render successfully', () => {
+    it('renders the toolbar and header in text mode', () => {
         render(<NoteEditor />);
         expect(screen.getByTestId('note-toolbar')).toBeInTheDocument();
         expect(screen.getByTestId('note-header')).toBeInTheDocument();
         expect(screen.getByTestId('text-editor')).toBeInTheDocument();
+        expect(screen.queryByTestId('checklist-editor')).not.toBeInTheDocument();
     });
 
-    it('should switch to checklist editor when mode is checklist', () => {
-        (useNoteEditorHook.useNoteEditor as any).mockReturnValue({
-            ...useNoteEditorHook.useNoteEditor({}),
-            modeState: { ...mockModeState, mode: 'checklist' },
-        });
+    it('renders ChecklistEditor when mode is checklist', () => {
+        (useNoteEditorHook.useNoteEditor as ReturnType<typeof vi.fn>).mockReturnValue(
+            buildMockHookReturn({ modeState: { mode: 'checklist', setMode: vi.fn() } })
+        );
 
         render(<NoteEditor />);
         expect(screen.getByTestId('checklist-editor')).toBeInTheDocument();
         expect(screen.queryByTestId('text-editor')).not.toBeInTheDocument();
     });
 
-    it('should call save action when save button is clicked', () => {
+    it('calls save action when save button is clicked', () => {
+        const saveFn = vi.fn();
+        (useNoteEditorHook.useNoteEditor as ReturnType<typeof vi.fn>).mockReturnValue(
+            buildMockHookReturn({ actions: { save: saveFn, isSaving: false, canSave: true, lastSavedAt: null, isDirty: false, error: null, dismissError: vi.fn(), remove: vi.fn() } })
+        );
+
         render(<NoteEditor />);
         fireEvent.click(screen.getByText('Save'));
-        expect(mockActions.save).toHaveBeenCalled();
+        expect(saveFn).toHaveBeenCalledTimes(1);
     });
 
-    it('should display error banner when error is present', () => {
-        (useNoteEditorHook.useNoteEditor as any).mockReturnValue({
-            ...useNoteEditorHook.useNoteEditor({}),
-            actions: { ...mockActions, error: 'Failed to save' },
-        });
+    it('shows error banner when error is present', () => {
+        (useNoteEditorHook.useNoteEditor as ReturnType<typeof vi.fn>).mockReturnValue(
+            buildMockHookReturn({ actions: { save: vi.fn(), remove: vi.fn(), isSaving: false, canSave: true, lastSavedAt: null, isDirty: false, error: 'Failed to save', dismissError: vi.fn() } })
+        );
 
         render(<NoteEditor />);
+        // The error banner is rendered inline in NoteEditor (not via NoteToolbar mock)
         expect(screen.getByText('Failed to save')).toBeInTheDocument();
+        expect(screen.getByText('Dismiss')).toBeInTheDocument();
+    });
+
+    it('disables the save button while saving', () => {
+        (useNoteEditorHook.useNoteEditor as ReturnType<typeof vi.fn>).mockReturnValue(
+            buildMockHookReturn({ actions: { save: vi.fn(), remove: vi.fn(), isSaving: true, canSave: false, lastSavedAt: null, isDirty: true, error: null, dismissError: vi.fn() } })
+        );
+
+        render(<NoteEditor />);
+        expect(screen.getByText('Save')).toBeDisabled();
+    });
+
+    it('renders the note title in the header input', () => {
+        (useNoteEditorHook.useNoteEditor as ReturnType<typeof vi.fn>).mockReturnValue(
+            buildMockHookReturn({ metadata: { title: 'My Special Note', setTitle: vi.fn(), accountId: '', setAccountId: vi.fn(), isPinned: false, setIsPinned: vi.fn(), accounts: [] } })
+        );
+
+        render(<NoteEditor />);
+        expect(screen.getByDisplayValue('My Special Note')).toBeInTheDocument();
     });
 });

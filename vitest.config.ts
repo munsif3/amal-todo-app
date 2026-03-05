@@ -11,5 +11,16 @@ export default defineConfig({
         alias: {
             '@': path.resolve(__dirname, './src'),
         },
+        coverage: {
+            provider: 'v8',
+            reporter: ['text', 'html'],
+            include: ['src/lib/**', 'src/components/**'],
+            exclude: [
+                'src/lib/firebase/client.ts',
+                'src/lib/firebase/auth-context.tsx',
+                '**/__tests__/**',
+                '**/*.d.ts',
+            ],
+        },
     },
 });
