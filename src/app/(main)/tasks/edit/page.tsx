@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/firebase/auth-context";
 import { getTask, updateTask, deleteTask } from "@/lib/firebase/tasks";
 import { Task } from "@/types";
-import { X } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import TaskForm from "@/components/tasks/TaskForm";
 import Loader from "@/components/ui/Loading";
 
@@ -81,9 +81,11 @@ function EditTaskContent() {
 
     return (
         <div style={{ paddingTop: '1rem' }}>
-            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: '700' }}>Edit Action</h2>
-                <button onClick={() => router.back()} style={{ opacity: 0.5 }}><X /></button>
+            <header style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                <button onClick={() => router.back()} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.6, display: 'flex', padding: 0 }}>
+                    <ArrowLeft size={24} />
+                </button>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: 0 }}>Edit Action</h2>
             </header>
 
             {user && (

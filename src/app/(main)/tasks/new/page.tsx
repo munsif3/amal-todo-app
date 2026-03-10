@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/firebase/auth-context";
 import { createTask } from "@/lib/firebase/tasks";
-import { X } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import TaskForm from "@/components/tasks/TaskForm";
 
 export default function NewTaskPage() {
@@ -29,9 +29,11 @@ export default function NewTaskPage() {
 
     return (
         <div style={{ paddingTop: '1rem' }}>
-            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: '700' }}>New Action</h2>
-                <button onClick={() => router.back()} style={{ opacity: 0.5 }}><X /></button>
+            <header style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                <button onClick={() => router.back()} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.6, display: 'flex', padding: 0 }}>
+                    <ArrowLeft size={24} />
+                </button>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: 0 }}>New Action</h2>
             </header>
 
             {user && (

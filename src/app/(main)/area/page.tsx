@@ -5,13 +5,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/firebase/auth-context";
 import { getAccount } from "@/lib/firebase/accounts";
 import { subscribeToMeetings } from "@/lib/firebase/meetings";
+import { subscribeToAccountNotes } from "@/lib/firebase/notes";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useRoutines } from "@/lib/hooks/use-routines";
-import { Account, Meeting } from "@/types";
+import { Account, Meeting, Note } from "@/types";
 import Loader from "@/components/ui/Loading";
-import { ArrowLeft, MoreVertical, Calendar, Repeat, CheckSquare } from "lucide-react";
+import { ArrowLeft, MoreVertical, Calendar, Repeat, CheckSquare, Plus } from "lucide-react";
 import Link from "next/link";
 import TaskCard from "@/components/today/TaskCard";
+import NoteList from "@/components/notes/NoteList";
 
 function AreaDashboardContent() {
     const searchParams = useSearchParams();
@@ -20,6 +22,8 @@ function AreaDashboardContent() {
     const router = useRouter();
     const [account, setAccount] = useState<Account | null>(null);
     const [meetings, setMeetings] = useState<Meeting[]>([]);
+    const [notes, setNotes] = useState<Note[]>([]);
+    const [activeTab, setActiveTab] = useState<'overview' | 'notes'>('overview');
     const [loadingAccount, setLoadingAccount] = useState(true);
 
     const { tasks, changeTaskStatus, loading: tasksLoading } = useTasks(user);
@@ -39,8 +43,14 @@ function AreaDashboardContent() {
             setMeetings(allMeetings.filter(m => m.accountId === id));
         });
 
+        // Fetch Notes
+        const unsubNotes = subscribeToAccountNotes(user.uid, id, (fetchedNotes) => {
+            setNotes(fetchedNotes);
+        });
+
         return () => {
             unsubMeetings();
+            unsubNotes();
         };
     }, [user, id]);
 
@@ -80,9 +90,74 @@ function AreaDashboardContent() {
                 </Link>
             </header>
 
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.5rem' }}>
+                <Link href={activeTab === 'overview' ? "/tasks/new" : `/notes/new?accountId=${id}`}>
+                    <button style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        backgroundColor: 'var(--primary)',
+                        color: 'var(--primary-foreground)',
+                        padding: '0.5rem 1rem',
+                        borderRadius: 'var(--radius)',
+                        fontWeight: '600',
+                        fontSize: '0.875rem'
+                    }}>
+                        <Plus size={18} />
+                        {activeTab === 'overview' ? 'New Task' : 'New Note'}
+                    </button>
+                </Link>
+            </div>
+
+            <div style={{
+                display: 'flex',
+                gap: '1.5rem',
+                borderBottom: '1px solid var(--border)',
+                marginBottom: '2rem'
+            }}>
+                <button
+                    onClick={() => setActiveTab('overview')}
+                    style={{
+                        padding: '0.75rem 0',
+                        fontWeight: activeTab === 'overview' ? '600' : '500',
+                        color: activeTab === 'overview' ? 'var(--primary)' : 'var(--muted-foreground)',
+                        borderBottom: activeTab === 'overview' ? '2px solid var(--primary)' : '2px solid transparent',
+                        transition: 'var(--transition-ease)',
+                        background: 'none',
+                        borderTop: 'none',
+                        borderLeft: 'none',
+                        borderRight: 'none',
+                        cursor: 'pointer',
+                        fontSize: '1rem'
+                    }}
+                >
+                    Overview
+                </button>
+                <button
+                    onClick={() => setActiveTab('notes')}
+                    style={{
+                        padding: '0.75rem 0',
+                        fontWeight: activeTab === 'notes' ? '600' : '500',
+                        color: activeTab === 'notes' ? 'var(--primary)' : 'var(--muted-foreground)',
+                        borderBottom: activeTab === 'notes' ? '2px solid var(--primary)' : '2px solid transparent',
+                        transition: 'var(--transition-ease)',
+                        background: 'none',
+                        borderTop: 'none',
+                        borderLeft: 'none',
+                        borderRight: 'none',
+                        cursor: 'pointer',
+                        fontSize: '1rem'
+                    }}
+                >
+                    Notes ({notes.length})
+                </button>
+            </div>
+
             {/* Content Sections */}
 
-            {/* 1. Tasks */}
+            {activeTab === 'overview' ? (
+                <>
+                    {/* 1. Tasks */}
             <section style={{ marginBottom: '2.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', opacity: 0.7 }}>
                     <CheckSquare size={16} />
@@ -162,6 +237,10 @@ function AreaDashboardContent() {
                     </div>
                 )}
             </section>
+                </>
+            ) : (
+                <NoteList notes={notes} />
+            )}
         </div>
     );
 }

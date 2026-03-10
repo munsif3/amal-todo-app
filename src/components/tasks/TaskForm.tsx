@@ -91,7 +91,7 @@ export default function TaskForm({ userId, initialData, onSubmit, onDelete, subm
     };
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '600px' }}>
             <Input
                 label="What needs to be done?"
                 placeholder="Task title"

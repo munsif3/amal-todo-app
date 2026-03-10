@@ -14,7 +14,7 @@ interface AccountCardProps {
 
 export default function AccountCard({ account, onEdit, onDelete }: AccountCardProps) {
     return (
-        <Link href={`/account?id=${account.id}`} style={{
+        <Link href={`/area?id=${account.id}`} style={{
             display: 'flex',
             alignItems: 'center',
             padding: '1.25rem',

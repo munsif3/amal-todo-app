@@ -54,10 +54,11 @@ function AccountDetailContent() {
         try {
             if (isNew) {
                 await createAccount(user.uid, accountData);
+                router.push("/accounts");
             } else {
                 await updateAccount(id as string, accountData);
+                router.back();
             }
-            router.push("/accounts");
         } catch (error) {
             console.error("Error saving account:", error);
             setSubmitting(false);
@@ -69,7 +70,7 @@ function AccountDetailContent() {
         setSubmitting(true);
         try {
             await deleteAccount(id as string);
-            router.push("/accounts");
+            router.push("/accounts"); // Always return to accounts list on delete
         } catch (error) {
             console.error("Error deleting account:", error);
             setSubmitting(false);
@@ -79,16 +80,22 @@ function AccountDetailContent() {
     if (loading) return <Loader fullScreen={false} className="py-8" />;
 
     return (
-        <div style={{ paddingBottom: '80px', maxWidth: '600px', margin: '0 auto' }}>
+        <div style={{ paddingBottom: '80px' }}>
             <header style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '1rem',
                 marginBottom: '1.5rem',
             }}>
-                <Link href="/accounts" style={{ color: '#666' }}>
+                <button onClick={() => {
+                    if (isNew) {
+                        router.push("/accounts");
+                    } else {
+                        router.back();
+                    }
+                }} style={{ color: '#666', background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}>
                     <ArrowLeft size={24} />
-                </Link>
+                </button>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: '700' }}>
                     {isNew ? "New Area" : "Edit Area"}
                 </h2>
@@ -116,7 +123,7 @@ function AccountDetailContent() {
                 </button>
             </header>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '600px' }}>
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>Area Name</label>
                     <input

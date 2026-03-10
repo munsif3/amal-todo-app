@@ -238,7 +238,7 @@ function UniversalItemFormInner({
     };
 
     return (
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'slideIn 0.3s ease' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '600px', animation: 'slideIn 0.3s ease' }}>
 
             {/* 1. Common Title */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

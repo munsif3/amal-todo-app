@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Trash2, X } from "lucide-react";
+import { Trash2, ArrowLeft } from "lucide-react";
 import UniversalItemForm from "@/components/universal/UniversalItemForm";
 import { getTask, deleteTask } from "@/lib/firebase/tasks";
 import { getRoutine, deleteRoutine } from "@/lib/firebase/routines";
@@ -73,9 +73,13 @@ function EditItemContent() {
 
     return (
         <div style={{ paddingTop: '1rem', paddingBottom: '5rem' }}>
-            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: '700' }}>Edit {type.charAt(0).toUpperCase() + type.slice(1)}</h2>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <header style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                <button onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.6, display: 'flex', padding: 0 }}>
+                    <ArrowLeft size={24} />
+                </button>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: 0 }}>Edit {type.charAt(0).toUpperCase() + type.slice(1)}</h2>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto' }}>
                     <button
                         onClick={handleDelete}
                         disabled={isDeleting}
@@ -95,9 +99,6 @@ function EditItemContent() {
                         onMouseLeave={e => (e.currentTarget.style.opacity = isDeleting ? '0.5' : '0.6')}
                     >
                         <Trash2 size={20} />
-                    </button>
-                    <button onClick={handleClose} style={{ opacity: 0.5, padding: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer' }}>
-                        <X size={20} />
                     </button>
                 </div>
             </header>

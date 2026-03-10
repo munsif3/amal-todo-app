@@ -3,17 +3,22 @@
 import { useAuth } from "@/lib/firebase/auth-context";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useRoutines } from "@/lib/hooks/use-routines";
+import { useAccounts } from "@/lib/hooks/use-accounts";
 import { subscribeToMeetings } from "@/lib/firebase/meetings";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { CheckSquare, Repeat, Calendar, ArrowRight } from "lucide-react";
+import { CheckSquare, Repeat, Calendar, ArrowRight, Folder } from "lucide-react";
 import Loader from "@/components/ui/Loading";
 import { Meeting } from "@/types";
 import StatsWidget from "@/components/gamification/StatsWidget";
 import SomedaySweeper from "@/components/gamification/SomedaySweeper";
+import { DEFAULT_ACCOUNT_COLOR } from "@/lib/constants";
 
 export default function DashboardPage() {
     const { user } = useAuth();
+
+    // Accounts (Areas)
+    const { accounts, loading: accountsLoading } = useAccounts(user);
 
     // Todo Counts
     const { activeTasks, loading: tasksLoading } = useTasks(user, "");
@@ -59,7 +64,7 @@ export default function DashboardPage() {
         return () => unsubscribe();
     }, [user]);
 
-    const isLoading = tasksLoading || routinesLoading || meetingsLoading;
+    const isLoading = tasksLoading || routinesLoading || meetingsLoading || accountsLoading;
 
     if (isLoading) {
         return <Loader fullScreen={false} className="py-8" />;
@@ -156,6 +161,52 @@ export default function DashboardPage() {
                     </Link>
                 ))}
             </div>
+
+            {/* Areas Section */}
+            {accounts.length > 0 && (
+                <div style={{ marginTop: '2.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', opacity: 0.7 }}>
+                        <Folder size={16} />
+                        <h2 style={{ fontSize: '0.875rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Your Areas
+                        </h2>
+                    </div>
+                    
+                    <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', 
+                        gap: '1rem' 
+                    }}>
+                        {accounts.map(account => {
+                            const accountTasksCount = activeTasks.filter(t => t.accountId === account.id).length;
+                            const color = account.color || DEFAULT_ACCOUNT_COLOR;
+                            
+                            return (
+                                <Link href={`/area?id=${account.id}`} key={account.id} style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    padding: '1.25rem',
+                                    backgroundColor: 'var(--card-bg)',
+                                    borderRadius: '12px',
+                                    border: '1px solid var(--border)',
+                                    borderTop: `4px solid ${color}`,
+                                    textDecoration: 'none',
+                                    color: 'inherit',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.01)',
+                                    transition: 'transform 0.1s ease, box-shadow 0.2s ease',
+                                }}>
+                                    <div style={{ fontWeight: '600', fontSize: '1rem', marginBottom: '0.5rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {account.name}
+                                    </div>
+                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                        {accountTasksCount} active task{accountTasksCount !== 1 ? 's' : ''}
+                                    </div>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

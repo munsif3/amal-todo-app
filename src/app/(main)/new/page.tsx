@@ -2,7 +2,7 @@
 
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { X } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import UniversalItemForm from "@/components/universal/UniversalItemForm";
 import Loader from "@/components/ui/Loading";
 
@@ -19,11 +19,11 @@ function NewItemContent() {
 
     return (
         <div style={{ paddingTop: '1rem', paddingBottom: '5rem' }}>
-            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: '700' }}>New Item</h2>
-                <button onClick={handleClose} style={{ opacity: 0.5, padding: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer' }}>
-                    <X size={20} />
+            <header style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                <button onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.6, display: 'flex', padding: 0 }}>
+                    <ArrowLeft size={24} />
                 </button>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: 0 }}>New Item</h2>
             </header>
 
             {/* UniversalItemForm reads ?mode= internally via useSearchParams */}

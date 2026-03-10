@@ -25,9 +25,8 @@ export function NoteToolbar({
 
     return (
         <div className={styles.toolbar}>
-            <button onClick={handleBack} className={styles.backButton}>
-                <ArrowLeft size={20} />
-                Back
+            <button onClick={handleBack} className={styles.backButton} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.6, display: 'flex', padding: 0 }}>
+                <ArrowLeft size={24} />
             </button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>

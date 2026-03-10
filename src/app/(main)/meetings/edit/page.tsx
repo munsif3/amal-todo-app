@@ -74,17 +74,17 @@ function MeetingDetailContent() {
     if (loading) return <div style={{ padding: '2rem' }}>Loading details...</div>;
 
     return (
-        <div style={{ paddingBottom: '80px', maxWidth: '600px', margin: '0 auto' }}>
+        <div style={{ paddingBottom: '80px' }}>
             <header style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '1rem',
                 marginBottom: '1.5rem',
             }}>
-                <Link href="/meetings" style={{ color: '#666' }}>
+                <button onClick={() => router.back()} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.6, display: 'flex', padding: 0 }}>
                     <ArrowLeft size={24} />
-                </Link>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: '700' }}>
+                </button>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0 }}>
                     {isNew ? "New Meeting" : "Edit Meeting"}
                 </h2>
                 <div style={{ flex: 1 }} />
@@ -103,7 +103,7 @@ function MeetingDetailContent() {
                 </button>
             </header>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '600px' }}>
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>Title</label>
                     <input
