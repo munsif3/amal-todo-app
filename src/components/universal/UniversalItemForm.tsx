@@ -8,16 +8,17 @@ import { createTask, updateTask } from "@/lib/firebase/tasks";
 import { createRoutine, updateRoutine } from "@/lib/firebase/routines";
 import { createMeeting, updateMeeting } from "@/lib/firebase/meetings";
 import { createNote, updateNote } from "@/lib/firebase/notes";
+import { createDelegation } from "@/lib/firebase/delegations";
 import { subscribeToUserProfile } from "@/lib/firebase/user_profile";
-import { Account, Task, Routine, Meeting, Note, TaskStatus, Subtask, UpdateMeetingInput, UserProfile } from "@/types";
+import { Account, Task, Routine, Meeting, Note, TaskStatus, Subtask, UpdateMeetingInput, UserProfile, DelegationSubtask } from "@/types";
 import { Input, Textarea, Button } from "@/components/ui/Form";
 import AreaSelector from "@/components/ui/AreaSelector";
 import RichTextArea from "@/components/ui/RichTextArea";
 import { Timestamp } from "firebase/firestore";
-import { Calendar, Repeat, Book, Video, CheckSquare, ArrowLeft, Plus, X, User } from "lucide-react";
+import { Calendar, Repeat, Book, Video, CheckSquare, ArrowLeft, Plus, X, User, Users } from "lucide-react";
 import { useWarnIfUnsavedChanges } from "@/lib/hooks/use-warn-if-unsaved";
 
-type CaptureMode = 'TASK' | 'ROUTINE' | 'MEETING' | 'NOTE';
+type CaptureMode = 'TASK' | 'ROUTINE' | 'MEETING' | 'NOTE' | 'DELEGATION';
 
 interface UniversalItemFormProps {
     onClose?: () => void;
@@ -51,7 +52,7 @@ function UniversalItemFormInner({
         // If no itemId (new item), read ?mode= query param for default selection
         if (!itemId) {
             const qMode = searchParams?.get('mode') as CaptureMode;
-            if (qMode && ['TASK', 'ROUTINE', 'MEETING', 'NOTE'].includes(qMode)) return qMode;
+            if (qMode && ['TASK', 'ROUTINE', 'MEETING', 'NOTE', 'DELEGATION'].includes(qMode)) return qMode;
         }
         return initialMode;
     });
@@ -80,6 +81,11 @@ function UniversalItemFormInner({
 
     // Meeting State
     const [meetingTime, setMeetingTime] = useState(() => buildDateTimeString(0, '09:30'));
+
+    // Delegation State
+    const [assignee, setAssignee] = useState("");
+    const [delegationSubtasks, setDelegationSubtasks] = useState<DelegationSubtask[]>([]);
+    const [newDelegationSubtask, setNewDelegationSubtask] = useState("");
 
     // Note State
     const [noteType, setNoteType] = useState<'text' | 'checklist'>('text');
@@ -218,6 +224,17 @@ function UniversalItemFormInner({
                 if (itemId) await updateNote(itemId, data);
                 else await createNote(user.uid, { ...data, isPinned: false });
             }
+            else if (mode === 'DELEGATION') {
+                const data = {
+                    title,
+                    description,
+                    assignee,
+                    accountId: accountId || null,
+                    deadline: deadline ? Timestamp.fromDate(new Date(deadline)) : null,
+                    subtasks: delegationSubtasks,
+                };
+                await createDelegation(user.uid, data);
+            }
 
             if (onSuccess) onSuccess();
         } catch (error) {
@@ -246,7 +263,8 @@ function UniversalItemFormInner({
                     placeholder={
                         mode === 'ROUTINE' ? "Name of routine..." :
                             mode === 'MEETING' ? "Meeting subject..." :
-                                "What needs to be done?"
+                                mode === 'DELEGATION' ? "e.g. Q2 Platform Migration" :
+                                    "What needs to be done?"
                     }
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
@@ -309,6 +327,17 @@ function UniversalItemFormInner({
                             style={{ width: '18px', height: '18px', accentColor: 'var(--primary)', cursor: 'pointer' }}
                         />
                         <span>Meeting</span>
+                    </label>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '500' }}>
+                        <input
+                            type="radio"
+                            name="itemMode"
+                            checked={mode === 'DELEGATION'}
+                            onChange={() => setMode('DELEGATION')}
+                            style={{ width: '18px', height: '18px', accentColor: 'var(--primary)', cursor: 'pointer' }}
+                        />
+                        <span>Delegation</span>
                     </label>
                 </div>
             )}
@@ -392,6 +421,67 @@ function UniversalItemFormInner({
                             </div>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* Delegation-specific: Assignee + Subtasks */}
+            {mode === 'DELEGATION' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem', backgroundColor: 'var(--bg-subtle)', borderRadius: '8px', borderLeft: '3px solid #4b6584', animation: 'slideIn 0.2s ease' }}>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--foreground)' }}>Delegation Details</h4>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <span style={{ opacity: 0.5 }}><User size={18} /></span>
+                        <Input
+                            placeholder="Assigned to (e.g. Sarah K.)"
+                            value={assignee}
+                            onChange={(e) => setAssignee(e.target.value)}
+                            style={{ flex: 1 }}
+                        />
+                    </div>
+
+                    {/* Subtasks list */}
+                    {delegationSubtasks.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                            {delegationSubtasks.map((st) => (
+                                <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', backgroundColor: 'var(--card-bg)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                    <span style={{ flex: 1, fontSize: '0.875rem' }}>{st.title}</span>
+                                    <button type="button" onClick={() => setDelegationSubtasks(delegationSubtasks.filter(s => s.id !== st.id))} style={{ opacity: 0.5, padding: '0.25rem', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Add subtask input */}
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <Input
+                            placeholder="Add a subtask..."
+                            value={newDelegationSubtask}
+                            onChange={(e) => setNewDelegationSubtask(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && newDelegationSubtask.trim()) {
+                                    e.preventDefault();
+                                    setDelegationSubtasks([...delegationSubtasks, { id: crypto.randomUUID(), title: newDelegationSubtask.trim(), isCompleted: false }]);
+                                    setNewDelegationSubtask("");
+                                }
+                            }}
+                            style={{ flex: 1 }}
+                        />
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={!newDelegationSubtask.trim()}
+                            onClick={() => {
+                                if (!newDelegationSubtask.trim()) return;
+                                setDelegationSubtasks([...delegationSubtasks, { id: crypto.randomUUID(), title: newDelegationSubtask.trim(), isCompleted: false }]);
+                                setNewDelegationSubtask("");
+                            }}
+                            style={{ padding: '0.5rem' }}
+                        >
+                            <Plus size={16} />
+                        </Button>
+                    </div>
                 </div>
             )}
 
@@ -531,7 +621,7 @@ function UniversalItemFormInner({
                     Cancel
                 </Button>
                 <Button type="submit" disabled={!title || isSubmitting} isLoading={isSubmitting} style={{ flex: 1 }}>
-                    {itemId ? "Save Changes" : `Create ${mode === 'TASK' ? 'Item' : mode.charAt(0) + mode.slice(1).toLowerCase()}`}
+                    {itemId ? "Save Changes" : `Create ${mode === 'TASK' ? 'Item' : mode === 'DELEGATION' ? 'Delegation' : mode.charAt(0) + mode.slice(1).toLowerCase()}`}
                 </Button>
             </div>
 

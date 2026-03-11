@@ -138,3 +138,31 @@ export interface UserStats {
     lastActiveDate: Timestamp | null;
     updatedAt: Timestamp;
 }
+
+// ─── Delegation Tracker ──────────────────────────────────────
+
+export type DelegationStatus = 'active' | 'review' | 'closed';
+
+export interface DelegationSubtask {
+    id: string;
+    title: string;
+    isCompleted: boolean;
+}
+
+export interface Delegation {
+    id: string;
+    ownerId: string;
+    accountId?: string | null;
+    title: string;
+    description: string;
+    assignee: string;
+    status: DelegationStatus;
+    subtasks: DelegationSubtask[];
+    deadline?: Timestamp | null;
+    closingNotes: string;
+    createdAt: Timestamp;
+    updatedAt: Timestamp;
+}
+
+export type CreateDelegationInput = Partial<Omit<Delegation, 'id' | 'ownerId' | 'createdAt' | 'updatedAt'>>;
+export type UpdateDelegationInput = Partial<Omit<Delegation, 'id' | 'ownerId' | 'createdAt' | 'updatedAt'>>;

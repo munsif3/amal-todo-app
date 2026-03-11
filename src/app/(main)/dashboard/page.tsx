@@ -7,12 +7,13 @@ import { useAccounts } from "@/lib/hooks/use-accounts";
 import { subscribeToMeetings } from "@/lib/firebase/meetings";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { CheckSquare, Repeat, Calendar, ArrowRight, Folder } from "lucide-react";
+import { CheckSquare, Repeat, Calendar, ArrowRight, Folder, Users } from "lucide-react";
 import Loader from "@/components/ui/Loading";
 import { Meeting } from "@/types";
 import StatsWidget from "@/components/gamification/StatsWidget";
 import SomedaySweeper from "@/components/gamification/SomedaySweeper";
 import { DEFAULT_ACCOUNT_COLOR } from "@/lib/constants";
+import { useDelegations } from "@/lib/hooks/use-delegations";
 
 export default function DashboardPage() {
     const { user } = useAuth();
@@ -22,6 +23,9 @@ export default function DashboardPage() {
 
     // Todo Counts
     const { activeTasks, loading: tasksLoading } = useTasks(user, "");
+
+    // Delegations
+    const { activeDelegations, reviewDelegations, loading: delegationsLoading } = useDelegations(user);
 
     // Routine Counts
     const { todaysRoutines, loading: routinesLoading } = useRoutines(user, "");
@@ -64,7 +68,7 @@ export default function DashboardPage() {
         return () => unsubscribe();
     }, [user]);
 
-    const isLoading = tasksLoading || routinesLoading || meetingsLoading || accountsLoading;
+    const isLoading = tasksLoading || routinesLoading || meetingsLoading || accountsLoading || delegationsLoading;
 
     if (isLoading) {
         return <Loader fullScreen={false} className="py-8" />;
@@ -99,6 +103,14 @@ export default function DashboardPage() {
             href: "/meetings", // Or filtering for just meetings
             color: "#D1B894", // Gold/Tan
             description: "Events & Calls"
+        },
+        {
+            title: "Delegated",
+            count: activeDelegations.length + reviewDelegations.length,
+            icon: Users,
+            href: "/delegations",
+            color: "#4b6584",
+            description: "Team assignments"
         }
     ];
 

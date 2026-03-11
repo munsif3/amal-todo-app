@@ -37,6 +37,11 @@ service cloud.firestore {
       allow create: if isCreatingAsSelf();
     }
 
+    match /delegations/{delegationId} {
+      allow read, update, delete: if isOwner(resource.data);
+      allow create: if isCreatingAsSelf();
+    }
+
     match /user_stats/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
