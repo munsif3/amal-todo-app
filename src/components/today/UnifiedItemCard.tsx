@@ -22,6 +22,7 @@ export interface UnifiedItem {
         text: string;
         variant: 'default' | 'destructive' | 'warning' | 'neutral';
     };
+    epicName?: string;
     isFrog?: boolean;
     isTwoMinute?: boolean;
     isPriority?: boolean;
@@ -186,6 +187,20 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
                     }}
                     whileTap={{ scale: 0.8 }}
                     style={{
+                        width: '44px',
+                        height: '44px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        padding: 0,
+                        flexShrink: 0,
+                        outline: 'none',
+                        background: 'none',
+                        border: 'none'
+                    }}
+                >
+                    <div style={{
                         width: '24px',
                         height: '24px',
                         borderRadius: '50%',
@@ -194,23 +209,19 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        cursor: 'pointer',
-                        padding: 0,
-                        flexShrink: 0,
-                        outline: 'none',
-                    }}
-                >
-                    {item.isCompleted && (
-                        <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ type: "spring", stiffness: 500, damping: 15 }}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        >
-                            <Check size={14} color="white" strokeWidth={3} />
-                        </motion.div>
-                    )}
-                    {item.type === 'routine' && !item.isCompleted && <Repeat size={14} className="text-muted-foreground" />}
+                    }}>
+                        {item.isCompleted && (
+                            <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                                <Check size={14} color="white" strokeWidth={3} />
+                            </motion.div>
+                        )}
+                        {item.type === 'routine' && !item.isCompleted && <Repeat size={14} className="text-muted-foreground" />}
+                    </div>
                 </motion.button>
 
                 <div style={{ flex: 1, minWidth: 0, paddingRight: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -279,6 +290,24 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
                                 ...badgeStyle
                             }}>
                                 {item.badge.text}
+                            </span>
+                        )}
+                        {item.epicName && !item.isCompleted && (
+                            <span style={{
+                                fontSize: '0.65rem',
+                                fontWeight: '700',
+                                padding: '0.1rem 0.4rem',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                color: '#60a5fa', // blue-400
+                                borderRadius: '4px',
+                                border: '1px solid rgba(59, 130, 246, 0.3)',
+                                whiteSpace: 'nowrap',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.2rem',
+                                flexShrink: 0,
+                            }} title={`Assigned to Epic: ${item.epicName}`}>
+                                ⚡ {item.epicName}
                             </span>
                         )}
                         {timeString && (
@@ -351,7 +380,7 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
                 </div>
 
                 {/* Actions: Delete + Edit Link */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0, paddingLeft: '0.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0', flexShrink: 0 }}>
                     {onDelete && !item.isCompleted && (
                         <button
                             type="button"
@@ -359,12 +388,14 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
                             title="Delete"
                             style={{
                                 opacity: 0.3,
-                                padding: '0.5rem',
+                                minWidth: '44px',
+                                minHeight: '44px',
                                 background: 'transparent',
                                 border: 'none',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
+                                justifyContent: 'center',
                                 color: 'var(--destructive)',
                                 transition: 'opacity 0.15s',
                             }}
@@ -376,7 +407,14 @@ export default function UnifiedItemCard({ item, onToggle, onToggleFrog, onToggle
                     )}
                     <Link
                         href={`/edit?type=${item.type}&id=${item.id}`}
-                        style={{ opacity: 0.3, padding: '0.5rem' }}
+                        style={{ 
+                            opacity: 0.3, 
+                            minWidth: '44px', 
+                            minHeight: '44px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}
                     >
                         <MoreVertical size={16} />
                     </Link>

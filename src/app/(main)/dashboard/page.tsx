@@ -14,6 +14,7 @@ import StatsWidget from "@/components/gamification/StatsWidget";
 import SomedaySweeper from "@/components/gamification/SomedaySweeper";
 import { DEFAULT_ACCOUNT_COLOR } from "@/lib/constants";
 import { useDelegations } from "@/lib/hooks/use-delegations";
+import ActivityRing from "@/components/ui/ActivityRing";
 
 export default function DashboardPage() {
     const { user } = useAuth();
@@ -22,7 +23,7 @@ export default function DashboardPage() {
     const { accounts, loading: accountsLoading } = useAccounts(user);
 
     // Todo Counts
-    const { activeTasks, loading: tasksLoading } = useTasks(user, "");
+    const { activeTasks, finishedTasks, loading: tasksLoading } = useTasks(user, "");
 
     // Delegations
     const { activeDelegations, reviewDelegations, loading: delegationsLoading } = useDelegations(user);
@@ -49,6 +50,34 @@ export default function DashboardPage() {
 
     }, [todaysRoutines]);
 
+    const [completedTasksTodayCount, setCompletedTasksTodayCount] = useState(0);
+
+    useEffect(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const endOfToday = new Date(today);
+        endOfToday.setHours(23, 59, 59, 999);
+
+        let completed = 0;
+        finishedTasks.forEach(t => {
+            const getCompletionDate = (task: any) => {
+                const doneEntries = task.history?.filter((h: any) => h.action === 'status_changed_to_done');
+                if (doneEntries && doneEntries.length > 0) {
+                    const latest = doneEntries.reduce((prev: any, current: any) => {
+                        return (prev.timestamp?.toMillis() || 0) > (current.timestamp?.toMillis() || 0) ? prev : current;
+                    });
+                    return latest.timestamp?.toDate();
+                }
+                return task.updatedAt?.toDate();
+            };
+            const cDate = getCompletionDate(t);
+            if (cDate && cDate >= today && cDate <= endOfToday) {
+                completed++;
+            }
+        });
+        setCompletedTasksTodayCount(completed);
+    }, [finishedTasks]);
+
     useEffect(() => {
         if (!user) return;
         const unsubscribe = subscribeToMeetings(user.uid, (data) => {
@@ -74,25 +103,34 @@ export default function DashboardPage() {
         return <Loader fullScreen={false} className="py-8" />;
     }
 
+    const activeTodayTasks = activeTasks.filter(t => {
+        if (!t.deadline) return true;
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        return t.deadline.toDate() <= today;
+    });
+
+    const totalTasksToday = activeTodayTasks.length + completedTasksTodayCount;
+    const taskProgress = totalTasksToday > 0 ? (completedTasksTodayCount / totalTasksToday) * 100 : 0;
+
     const cards = [
         {
             title: "Todo",
-            count: activeTasks.filter(t => {
-                if (!t.deadline) return true;
-                const today = new Date();
-                today.setHours(23, 59, 59, 999);
-                return t.deadline.toDate() <= today;
-            }).length + todaysRoutines.length,
+            count: activeTodayTasks.length,
+            progress: taskProgress,
+            hasProgress: true,
             icon: CheckSquare,
-            href: "/today", // Or filtering for just tasks
+            href: "/today",
             color: "var(--primary)",
-            description: "Active tasks & routines"
+            description: "Active tasks today"
         },
         {
             title: "Routine",
             count: pendingRoutinesCount,
+            progress: 0, // Simplified for now
+            hasProgress: false,
             icon: Repeat,
-            href: "/routines", // Or filtering for just routines
+            href: "/today",
             color: "#8A9A5B",
             description: "Scheduled habits"
         },
@@ -100,7 +138,8 @@ export default function DashboardPage() {
             title: "Meeting",
             count: meetingsCount,
             icon: Calendar,
-            href: "/meetings", // Or filtering for just meetings
+            hasProgress: false,
+            href: "/today",
             color: "#D1B894", // Gold/Tan
             description: "Events & Calls"
         },
@@ -108,6 +147,7 @@ export default function DashboardPage() {
             title: "Delegated",
             count: activeDelegations.length + reviewDelegations.length,
             icon: Users,
+            hasProgress: false,
             href: "/delegations",
             color: "#4b6584",
             description: "Team assignments"
@@ -142,17 +182,25 @@ export default function DashboardPage() {
                         textDecoration: 'none',
                         color: 'inherit'
                     }}>
-                        <div style={{
-                            width: '60px',
-                            height: '60px',
-                            borderRadius: '12px',
-                            backgroundColor: `${card.color}20`, // 20% opacity
-                            color: card.color,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                        }}>
-                            <card.icon size={30} strokeWidth={2.5} />
+                        <div style={{ position: 'relative', width: '60px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {card.hasProgress && (
+                                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <ActivityRing progress={card.progress || 0} size={60} strokeWidth={4} color={card.color} trackColor="var(--border)" />
+                                </div>
+                            )}
+                            <div style={{
+                                width: card.hasProgress ? '44px' : '60px',
+                                height: card.hasProgress ? '44px' : '60px',
+                                borderRadius: card.hasProgress ? '50%' : '12px',
+                                backgroundColor: `${card.color}15`,
+                                color: card.color,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 1
+                            }}>
+                                <card.icon size={24} strokeWidth={2.5} />
+                            </div>
                         </div>
 
                         <div style={{ flex: 1 }}>

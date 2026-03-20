@@ -199,6 +199,20 @@
                     "order": "DESCENDING"
                 }
             ]
+        },
+        {
+            "collectionGroup": "escalations",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "sprintId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "ASCENDING"
+                }
+            ]
         }
     ],
     "fieldOverrides": []

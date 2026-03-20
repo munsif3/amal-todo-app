@@ -80,6 +80,22 @@ export function subscribeToAccountTasks(userId: string, accountId: string, callb
     });
 }
 
+/** Subscribes to all tasks (active + completed) linked to a specific Epic. */
+export function subscribeToEpicTasks(userId: string, epicId: string, callback: (tasks: Task[]) => void) {
+    const q = query(
+        collection(db, TASKS_COLLECTION).withConverter(taskConverter),
+        where("ownerId", "==", userId),
+        where("epicId", "==", epicId),
+    );
+
+    return onSnapshot(q, (snapshot) => {
+        const tasks = snapshot.docs.map((doc) => doc.data());
+        callback(tasks);
+    }, (error) => {
+        console.error("Error subscribing to epic tasks:", error);
+    });
+}
+
 /** Fetches a single task by ID, returns null if not found. */
 export async function getTask(taskId: string) {
     const docRef = doc(db, TASKS_COLLECTION, taskId).withConverter(taskConverter);

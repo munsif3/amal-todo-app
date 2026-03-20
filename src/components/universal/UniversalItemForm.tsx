@@ -4,19 +4,16 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/firebase/auth-context";
 import { subscribeToAccounts } from "@/lib/firebase/accounts";
-import { createTask, updateTask } from "@/lib/firebase/tasks";
-import { createRoutine, updateRoutine } from "@/lib/firebase/routines";
-import { createMeeting, updateMeeting } from "@/lib/firebase/meetings";
-import { createNote, updateNote } from "@/lib/firebase/notes";
-import { createDelegation } from "@/lib/firebase/delegations";
 import { subscribeToUserProfile } from "@/lib/firebase/user_profile";
-import { Account, Task, Routine, Meeting, Note, TaskStatus, Subtask, UpdateMeetingInput, UserProfile, DelegationSubtask } from "@/types";
-import { Input, Textarea, Button } from "@/components/ui/Form";
-import AreaSelector from "@/components/ui/AreaSelector";
-import RichTextArea from "@/components/ui/RichTextArea";
-import { Timestamp } from "firebase/firestore";
-import { Calendar, Repeat, Book, Video, CheckSquare, ArrowLeft, Plus, X, User, Users } from "lucide-react";
-import { useWarnIfUnsavedChanges } from "@/lib/hooks/use-warn-if-unsaved";
+import { listenToCurrentSprint, listenToSprintEpics, Epic as CockpitEpic } from "@/lib/firebase/cockpit";
+import { Account, UserProfile } from "@/types";
+
+import TaskForm from "./forms/TaskForm";
+import RoutineForm from "./forms/RoutineForm";
+import MeetingForm from "./forms/MeetingForm";
+import DelegationForm from "./forms/DelegationForm";
+import NoteForm from "./forms/NoteForm";
+import { buildDefaultDatetimeString } from "@/lib/utils/date-helpers";
 
 type CaptureMode = 'TASK' | 'ROUTINE' | 'MEETING' | 'NOTE' | 'DELEGATION';
 
@@ -24,276 +21,77 @@ interface UniversalItemFormProps {
     onClose?: () => void;
     onSuccess?: () => void;
     initialMode?: CaptureMode;
-    initialData?: Partial<Task> & Partial<Routine> & Partial<Meeting> & Partial<Note>;
+    initialData?: any;
     itemId?: string;
 }
 
-/** Build a datetime-local string defaulting to the given HH:mm time, on
- *  tomorrow's date (for new items) or today's date if editing. */
-function buildDateTimeString(daysOffset: number, hhMm: string) {
-    const d = new Date();
-    d.setDate(d.getDate() + daysOffset);
-    const [hh, mm] = hhMm.split(':').map(Number);
-    d.setHours(hh, mm, 0, 0);
-    const offset = d.getTimezoneOffset() * 60000;
-    return new Date(d.getTime() - offset).toISOString().slice(0, 16);
-}
-
 function UniversalItemFormInner({
-    onClose,
-    onSuccess,
+    onClose = () => {},
+    onSuccess = () => {},
     initialMode = 'TASK',
     initialData,
     itemId
 }: UniversalItemFormProps) {
     const { user } = useAuth();
     const searchParams = useSearchParams();
+    
+    // Determine mode routing
     const [mode, setMode] = useState<CaptureMode>(() => {
-        // If no itemId (new item), read ?mode= query param for default selection
         if (!itemId) {
             const qMode = searchParams?.get('mode') as CaptureMode;
             if (qMode && ['TASK', 'ROUTINE', 'MEETING', 'NOTE', 'DELEGATION'].includes(qMode)) return qMode;
         }
         return initialMode;
     });
+
+    // Shared Data Fetching (Smart Container level)
     const [accounts, setAccounts] = useState<Account[]>([]);
-    const [isSubmitting, setIsSubmitting] = useState(false);
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+    const [availableEpics, setAvailableEpics] = useState<CockpitEpic[]>([]);
+    const [defaultTimeStr, setDefaultTimeStr] = useState("09:30");
+    const [defaultDeadlineStr, setDefaultDeadlineStr] = useState(() => buildDefaultDatetimeString(0, '09:30'));
 
-    const [title, setTitle] = useState("");
-    const [description, setDescription] = useState("");
-    const [accountId, setAccountId] = useState("");
-
-    // Gamification State (Tasks only)
-    const [isFrog, setIsFrog] = useState(false);
-    const [isTwoMinute, setIsTwoMinute] = useState(false);
-    const [isPriority, setIsPriority] = useState(false);
-    const [subtasks, setSubtasks] = useState<Subtask[]>([]);
-
-    // Build default deadline based on profile defaultTaskTime
-    const [deadline, setDeadline] = useState(() => buildDateTimeString(0, '09:30'));
-
-    // Routine State
-    const [routineSchedule, setRoutineSchedule] = useState("daily");
-    const [routineDays, setRoutineDays] = useState<number[]>([]);
-    const [routineMonthDay, setRoutineMonthDay] = useState<number>(1);
-    const [routineTime, setRoutineTime] = useState("09:30");
-
-    // Meeting State
-    const [meetingTime, setMeetingTime] = useState(() => buildDateTimeString(0, '09:30'));
-
-    // Delegation State
-    const [assignee, setAssignee] = useState("");
-    const [delegationSubtasks, setDelegationSubtasks] = useState<DelegationSubtask[]>([]);
-    const [newDelegationSubtask, setNewDelegationSubtask] = useState("");
-
-    // Note State
-    const [noteType, setNoteType] = useState<'text' | 'checklist'>('text');
-
-    // Subscribe to Accounts
+    // Subscriptions
     useEffect(() => {
         if (user) {
-            const unsubscribe = subscribeToAccounts(user.uid, setAccounts);
-            return () => unsubscribe();
+            return subscribeToAccounts(user.uid, setAccounts);
         }
     }, [user]);
 
-    // Subscribe to User Profile for default task time
     useEffect(() => {
         if (!user) return;
-        const unsubscribe = subscribeToUserProfile(user.uid, (profile) => {
+        return subscribeToUserProfile(user.uid, (profile) => {
             setUserProfile(profile);
             if (profile && !itemId) {
                 const dt = profile.preferences?.defaultTaskTime || '09:30';
-                // In case it comes back with a Date from the previous test, strip the date
                 const timeStr = dt.includes('T') ? dt.split('T')[1].slice(0, 5) : dt;
-
-                setDeadline(buildDateTimeString(0, timeStr));
-                setMeetingTime(buildDateTimeString(0, timeStr));
-                setRoutineTime(timeStr);
+                setDefaultTimeStr(timeStr);
+                setDefaultDeadlineStr(buildDefaultDatetimeString(0, timeStr));
             }
         });
-        return () => unsubscribe();
     }, [user, itemId]);
 
-    // Track unsaved changes
-    const hasUnsavedChanges = title.trim().length > 0 || (description && description.trim().length > 0) || false;
-    useWarnIfUnsavedChanges(hasUnsavedChanges);
-
-    // Initialize Data from Props (edit mode)
     useEffect(() => {
-        if (!initialData) return;
-
-        setTitle(initialData.title || "");
-        setAccountId(initialData.accountId || "");
-
-        if (mode === 'TASK') {
-            setDescription(initialData.description || "");
-            setIsFrog(initialData.isFrog || false);
-            setIsTwoMinute(initialData.isTwoMinute || false);
-            setIsPriority(initialData.isPriority || false);
-            setSubtasks(initialData.subtasks || []);
-            if (initialData.deadline) {
-                const date = initialData.deadline.toDate();
-                const offset = date.getTimezoneOffset() * 60000;
-                setDeadline((new Date(date.getTime() - offset)).toISOString().slice(0, 16));
-            }
-        } else if (mode === 'ROUTINE') {
-            setRoutineSchedule(initialData.schedule || "daily");
-            setRoutineDays(initialData.days || []);
-            setRoutineMonthDay(initialData.monthDay || 1);
-            setRoutineTime(initialData.time || "09:30");
-        } else if (mode === 'MEETING') {
-            if (initialData.startTime) {
-                const date = initialData.startTime.toDate();
-                const offset = date.getTimezoneOffset() * 60000;
-                setMeetingTime((new Date(date.getTime() - offset)).toISOString().slice(0, 16));
-            }
-            setDescription(initialData.notes?.before || "");
-        } else if (mode === 'NOTE') {
-            setDescription(initialData.content || "");
-            setNoteType(initialData.type || 'text');
-        }
-    }, [initialData, mode]);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!user || !title) return;
-
-        setIsSubmitting(true);
-        try {
-            if (mode === 'TASK') {
-                const data = {
-                    title,
-                    description,
-                    accountId: accountId || null,
-                    deadline: deadline ? Timestamp.fromDate(new Date(deadline)) : null,
-                    isFrog,
-                    isTwoMinute,
-                    isPriority,
-                    subtasks
-                };
-                if (itemId) await updateTask(itemId, data);
-                else await createTask(user.uid, { ...data, status: 'next' });
-            }
-            else if (mode === 'ROUTINE') {
-                const data = {
-                    title,
-                    accountId: accountId || null,
-                    schedule: routineSchedule as "daily" | "weekly" | "monthly",
-                    days: routineDays,
-                    monthDay: routineMonthDay,
-                    time: routineTime || undefined,
-                };
-                if (itemId) await updateRoutine(itemId, data);
-                else await createRoutine(user.uid, { ...data, type: 'fixed', isShared: false });
-            }
-            else if (mode === 'MEETING') {
-                const data = {
-                    title,
-                    accountId: accountId || null,
-                    startTime: meetingTime ? Timestamp.fromDate(new Date(meetingTime)) : Timestamp.now(),
-                    notes: { before: description, during: "", after: "" },
-                };
-
-                if (itemId) {
-                    const updateData: Partial<UpdateMeetingInput> = {
-                        title: data.title,
-                        accountId: data.accountId,
-                        startTime: data.startTime
-                    };
-                    if (description !== initialData?.notes?.before) {
-                        updateData.notes = {
-                            before: description,
-                            during: initialData?.notes?.during || '',
-                            after: initialData?.notes?.after || ''
-                        };
-                    }
-                    await updateMeeting(itemId, updateData);
-                } else {
-                    await createMeeting(user.uid, { ...data, prepTaskIds: [], checklist: [] });
-                }
-            }
-            else if (mode === 'NOTE') {
-                const data = {
-                    title,
-                    content: description,
-                    accountId: accountId || "",
-                    type: noteType,
-                };
-                if (itemId) await updateNote(itemId, data);
-                else await createNote(user.uid, { ...data, isPinned: false });
-            }
-            else if (mode === 'DELEGATION') {
-                const data = {
-                    title,
-                    description,
-                    assignee,
-                    accountId: accountId || null,
-                    deadline: deadline ? Timestamp.fromDate(new Date(deadline)) : null,
-                    subtasks: delegationSubtasks,
-                };
-                await createDelegation(user.uid, data);
-            }
-
-            if (onSuccess) onSuccess();
-        } catch (error) {
-            console.error("Error saving item:", error);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleClose = () => {
-        if (!onClose) return;
-        if (hasUnsavedChanges) {
-            if (!window.confirm("You have unsaved changes. Are you sure you want to discard them?")) {
+        const unsubSprint = listenToCurrentSprint((sprint) => {
+            if (!sprint) {
+                setAvailableEpics([]);
                 return;
             }
-        }
-        onClose();
-    };
+            const unsubEpics = listenToSprintEpics(sprint.sprintId, setAvailableEpics);
+            (unsubSprint as any).__innerUnsub = unsubEpics;
+        });
+        return () => {
+            unsubSprint();
+            if ((unsubSprint as any).__innerUnsub) (unsubSprint as any).__innerUnsub();
+        };
+    }, []);
+
+    if (!user) return null;
 
     return (
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '600px', animation: 'slideIn 0.3s ease' }}>
-
-            {/* 1. Common Title */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <Input
-                    placeholder={
-                        mode === 'ROUTINE' ? "Name of routine..." :
-                            mode === 'MEETING' ? "Meeting subject..." :
-                                mode === 'DELEGATION' ? "e.g. Q2 Platform Migration" :
-                                    "What needs to be done?"
-                    }
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    autoFocus={!itemId}
-                    required
-                    style={{ fontSize: '1.5rem', padding: '0.5rem 0', border: 'none', borderBottom: '1px solid var(--border)', borderRadius: 0, background: 'transparent' }}
-                />
-            </div>
-
-            {/* 2. Primary Date/Time Input */}
-            {mode !== 'ROUTINE' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span style={{ opacity: 0.5 }}>
-                        {mode === 'MEETING' ? <Video size={18} /> : <Calendar size={18} />}
-                    </span>
-                    <Input
-                        type="datetime-local"
-                        value={mode === 'MEETING' ? meetingTime : deadline}
-                        onChange={(e) => {
-                            if (mode === 'MEETING') setMeetingTime(e.target.value);
-                            else setDeadline(e.target.value);
-                        }}
-                        placeholder={mode === 'MEETING' ? "Start Time" : "Deadline (optional)"}
-                        style={{ flex: 1 }}
-                    />
-                </div>
-            )}
-
-            {/* 3. Mode Selection (Radio Buttons — new items only) */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '600px' }}>
+            
+            {/* Mode Selection (Radio Buttons — new items only) */}
             {!itemId && (
                 <div style={{ display: 'flex', gap: '1.5rem', padding: '0.5rem 0', opacity: 0.9 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '500' }}>
@@ -342,290 +140,47 @@ function UniversalItemFormInner({
                 </div>
             )}
 
-            {/* 4. Routine Schedule */}
+            {/* Sub-form Routing */}
+            {mode === 'TASK' && (
+                <TaskForm 
+                    user={user} itemId={itemId} initialData={initialData} 
+                    accounts={accounts} availableEpics={availableEpics} defaultDeadlineStr={defaultDeadlineStr}
+                    onClose={onClose} onSuccess={onSuccess} 
+                />
+            )}
+            
             {mode === 'ROUTINE' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem', backgroundColor: 'var(--bg-subtle)', borderRadius: '8px', borderLeft: '3px solid var(--primary)', animation: 'slideIn 0.2s ease' }}>
-                    <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--foreground)' }}>Routine Schedule</h4>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span style={{ opacity: 0.5 }}><Calendar size={18} /></span>
-                        <Input
-                            type="time"
-                            value={routineTime}
-                            onChange={(e) => setRoutineTime(e.target.value)}
-                            style={{ flex: 1, cursor: 'pointer' }}
-                            placeholder="Time (optional)"
-                        />
-                        <span style={{ fontSize: '0.875rem', opacity: 0.5 }}>(Optional)</span>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span style={{ opacity: 0.5 }}><Repeat size={18} /></span>
-                        <select
-                            value={routineSchedule}
-                            onChange={(e) => setRoutineSchedule(e.target.value)}
-                            style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card-bg)', flex: 1, cursor: 'pointer' }}
-                        >
-                            <option value="daily">Daily</option>
-                            <option value="weekly">Weekly</option>
-                            <option value="monthly">Monthly</option>
-                        </select>
-                    </div>
-
-                    {routineSchedule === 'weekly' && (
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', padding: '0.5rem 0' }}>
-                            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => {
-                                const isSelected = routineDays.includes(index);
-                                return (
-                                    <button
-                                        key={index}
-                                        type="button"
-                                        onClick={() => {
-                                            setRoutineDays(prev =>
-                                                prev.includes(index)
-                                                    ? prev.filter(d => d !== index)
-                                                    : [...prev, index]
-                                            );
-                                        }}
-                                        style={{
-                                            width: '36px', height: '36px',
-                                            borderRadius: '50%',
-                                            border: isSelected ? 'none' : '1px solid var(--border)',
-                                            background: isSelected ? 'var(--primary)' : 'var(--card-bg)',
-                                            color: isSelected ? 'var(--primary-foreground)' : 'var(--foreground)',
-                                            cursor: 'pointer',
-                                            fontSize: '0.75rem', fontWeight: '600',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        {day}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
-
-                    {routineSchedule === 'monthly' && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', paddingLeft: '2.5rem' }}>
-                            <span style={{ fontSize: '0.875rem', opacity: 0.7 }}>On the</span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <Input
-                                    type="number"
-                                    min="1" max="31"
-                                    value={routineMonthDay}
-                                    onChange={(e) => setRoutineMonthDay(parseInt(e.target.value) || 1)}
-                                    style={{ width: '60px', textAlign: 'center', background: 'var(--card-bg)' }}
-                                />
-                                <span style={{ fontSize: '0.875rem', opacity: 0.7 }}>day of the month</span>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                <RoutineForm 
+                    user={user} itemId={itemId} initialData={initialData} 
+                    accounts={accounts} defaultTime={defaultTimeStr}
+                    onClose={onClose} onSuccess={onSuccess} 
+                />
             )}
 
-            {/* Delegation-specific: Assignee + Subtasks */}
+            {mode === 'MEETING' && (
+                <MeetingForm 
+                    user={user} itemId={itemId} initialData={initialData} 
+                    accounts={accounts} defaultTimeStr={defaultDeadlineStr}
+                    onClose={onClose} onSuccess={onSuccess} 
+                />
+            )}
+
             {mode === 'DELEGATION' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem', backgroundColor: 'var(--bg-subtle)', borderRadius: '8px', borderLeft: '3px solid #4b6584', animation: 'slideIn 0.2s ease' }}>
-                    <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--foreground)' }}>Delegation Details</h4>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span style={{ opacity: 0.5 }}><User size={18} /></span>
-                        <Input
-                            placeholder="Assigned to (e.g. Sarah K.)"
-                            value={assignee}
-                            onChange={(e) => setAssignee(e.target.value)}
-                            style={{ flex: 1 }}
-                        />
-                    </div>
-
-                    {/* Subtasks list */}
-                    {delegationSubtasks.length > 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                            {delegationSubtasks.map((st) => (
-                                <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', backgroundColor: 'var(--card-bg)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                                    <span style={{ flex: 1, fontSize: '0.875rem' }}>{st.title}</span>
-                                    <button type="button" onClick={() => setDelegationSubtasks(delegationSubtasks.filter(s => s.id !== st.id))} style={{ opacity: 0.5, padding: '0.25rem', background: 'transparent', border: 'none', cursor: 'pointer' }}>
-                                        <X size={14} />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Add subtask input */}
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <Input
-                            placeholder="Add a subtask..."
-                            value={newDelegationSubtask}
-                            onChange={(e) => setNewDelegationSubtask(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && newDelegationSubtask.trim()) {
-                                    e.preventDefault();
-                                    setDelegationSubtasks([...delegationSubtasks, { id: crypto.randomUUID(), title: newDelegationSubtask.trim(), isCompleted: false }]);
-                                    setNewDelegationSubtask("");
-                                }
-                            }}
-                            style={{ flex: 1 }}
-                        />
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            disabled={!newDelegationSubtask.trim()}
-                            onClick={() => {
-                                if (!newDelegationSubtask.trim()) return;
-                                setDelegationSubtasks([...delegationSubtasks, { id: crypto.randomUUID(), title: newDelegationSubtask.trim(), isCompleted: false }]);
-                                setNewDelegationSubtask("");
-                            }}
-                            style={{ padding: '0.5rem' }}
-                        >
-                            <Plus size={16} />
-                        </Button>
-                    </div>
-                </div>
+                <DelegationForm 
+                    user={user} itemId={itemId} initialData={initialData} 
+                    accounts={accounts} defaultDeadlineStr={defaultDeadlineStr}
+                    onClose={onClose} onSuccess={onSuccess} 
+                />
             )}
 
-            {/* 5. Area Selector */}
-            <AreaSelector
-                accounts={accounts}
-                selectedAccountId={accountId}
-                onSelect={setAccountId}
-                label="Assign Area"
-            />
-
-            {/* 6. Description / Notes — RichTextArea */}
-            <RichTextArea
-                value={description}
-                onChange={setDescription}
-                placeholder={
-                    mode === 'MEETING' ? "Meeting agenda/notes... (supports **markdown**)" :
-                        "Details, context, or notes... (supports **markdown**)"
-                }
-                minHeight="120px"
-            />
-
-            {/* 7. Subtasks / Requirements (Tasks Only) */}
-            {mode === 'TASK' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem', backgroundColor: 'var(--bg-subtle)', borderRadius: '8px', borderLeft: '3px solid var(--primary)' }}>
-                    <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--foreground)' }}>Requirements</h4>
-
-                    {subtasks.map((subtask, index) => (
-                        <div key={subtask.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                            <input
-                                type="checkbox"
-                                checked={subtask.isCompleted}
-                                onChange={(e) => {
-                                    const newSubtasks = [...subtasks];
-                                    newSubtasks[index].isCompleted = e.target.checked;
-                                    setSubtasks(newSubtasks);
-                                }}
-                                style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer', flexShrink: 0 }}
-                            />
-                            <Input
-                                placeholder="Requirement title"
-                                value={subtask.title}
-                                onChange={(e) => {
-                                    const newSubtasks = [...subtasks];
-                                    newSubtasks[index].title = e.target.value;
-                                    setSubtasks(newSubtasks);
-                                }}
-                                style={{ flex: 1 }}
-                            />
-                            <div style={{ display: 'flex', alignItems: 'center', flex: 1, gap: '0.5rem', background: 'var(--card-bg)', borderRadius: 'var(--radius)', padding: '0 0.5rem', border: '1px solid var(--border)' }}>
-                                <User size={14} style={{ opacity: 0.5, flexShrink: 0 }} />
-                                <input
-                                    type="text"
-                                    placeholder="Assignee (optional)"
-                                    value={subtask.assignee || ''}
-                                    onChange={(e) => {
-                                        const newSubtasks = [...subtasks];
-                                        newSubtasks[index].assignee = e.target.value;
-                                        setSubtasks(newSubtasks);
-                                    }}
-                                    style={{ flex: 1, border: 'none', background: 'transparent', padding: '0.5rem 0', outline: 'none', fontSize: '0.875rem', color: 'var(--foreground)' }}
-                                />
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    const newSubtasks = subtasks.filter((_, i) => i !== index);
-                                    setSubtasks(newSubtasks);
-                                }}
-                                style={{ opacity: 0.5, padding: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer', flexShrink: 0 }}
-                            >
-                                <X size={16} />
-                            </button>
-                        </div>
-                    ))}
-
-                    <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={() => {
-                            setSubtasks([...subtasks, { id: crypto.randomUUID(), title: '', isCompleted: false }]);
-                        }}
-                        style={{ alignSelf: 'flex-start', display: 'flex', gap: '0.5rem', alignItems: 'center' }}
-                    >
-                        <Plus size={16} /> Add Requirement
-                    </Button>
-                </div>
+            {mode === 'NOTE' && (
+                <NoteForm 
+                    user={user} itemId={itemId} initialData={initialData} 
+                    accounts={accounts}
+                    onClose={onClose} onSuccess={onSuccess} 
+                />
             )}
-
-            {/* 8. Gamification + Priority Toggles (Tasks Only) */}
-            {mode === 'TASK' && (
-                <div className="mobile-wrap" style={{ display: 'flex', gap: '1rem', padding: '1rem', backgroundColor: 'var(--bg-subtle)', borderRadius: '8px', borderLeft: '3px solid var(--accent-sage)', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <input
-                            type="checkbox"
-                            id="isPriority"
-                            checked={isPriority}
-                            onChange={(e) => setIsPriority(e.target.checked)}
-                            style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
-                        />
-                        <label htmlFor="isPriority" style={{ fontSize: '0.875rem', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                            ⭐ Priority Today
-                        </label>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <input
-                            type="checkbox"
-                            id="isFrog"
-                            checked={isFrog}
-                            onChange={(e) => setIsFrog(e.target.checked)}
-                            style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
-                        />
-                        <label htmlFor="isFrog" style={{ fontSize: '0.875rem', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                            🐸 Eat the Frog
-                        </label>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <input
-                            type="checkbox"
-                            id="isTwoMinute"
-                            checked={isTwoMinute}
-                            onChange={(e) => setIsTwoMinute(e.target.checked)}
-                            style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
-                        />
-                        <label htmlFor="isTwoMinute" style={{ fontSize: '0.875rem', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                            ⚡ 2-Minute Rule
-                        </label>
-                    </div>
-                </div>
-            )}
-
-            {/* Actions */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem', gap: '1rem' }}>
-                <Button type="button" variant="secondary" onClick={handleClose} disabled={isSubmitting} style={{ flex: 1 }}>
-                    Cancel
-                </Button>
-                <Button type="submit" disabled={!title || isSubmitting} isLoading={isSubmitting} style={{ flex: 1 }}>
-                    {itemId ? "Save Changes" : `Create ${mode === 'TASK' ? 'Item' : mode === 'DELEGATION' ? 'Delegation' : mode.charAt(0) + mode.slice(1).toLowerCase()}`}
-                </Button>
-            </div>
-
-        </form>
+        </div>
     );
 }
 

@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Calendar, CheckCircle2, LayoutGrid, Plus, Repeat, User, Users, Book } from "lucide-react";
+import { Calendar, CheckCircle2, LayoutGrid, Plus, Repeat, User, Users, Book, Kanban } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useAuth } from "@/lib/firebase/auth-context";
 import StatsWidget from "@/components/gamification/StatsWidget";
 
 const navItems = [
     { label: "Today", href: "/today", icon: CheckCircle2 },
+    { label: "Cockpit", href: "/cockpit", icon: Kanban },
     { label: "Delegations", href: "/delegations", icon: Users },
     { label: "Home", href: "/dashboard", icon: LayoutGrid },
     { label: "Library", href: "/notes", icon: Book },

@@ -20,6 +20,8 @@ export interface Task {
     ownerId: string;
     accountId?: string | null;
     meetingId?: string | null;
+    epicId?: string | null;
+    epicName?: string | null;
     title: string;
     description: string;
     status: TaskStatus;

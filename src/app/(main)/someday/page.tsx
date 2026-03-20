@@ -39,6 +39,7 @@ export default function SomedayPage() {
             isCompleted: false, // Someday tasks are implicitly not completed
             accountId: t.accountId || undefined,
             areaColor: accounts.find(a => a.id === t.accountId)?.color,
+            epicName: t.epicName || undefined,
             isFrog: t.isFrog,
             isTwoMinute: t.isTwoMinute,
             originalItem: t,

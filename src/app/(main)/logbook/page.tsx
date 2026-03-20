@@ -55,6 +55,7 @@ export default function LogbookPage() {
             isCompleted: true,
             accountId: task.accountId || undefined,
             areaColor: accounts.find(a => a.id === task.accountId)?.color,
+            epicName: task.epicName || undefined,
             originalItem: task,
             badge: undefined // Logbook items usually don't show overdue badges
         };

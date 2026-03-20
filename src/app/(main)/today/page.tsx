@@ -192,6 +192,7 @@ export default function TodayPage() {
             isCompleted: false,
             accountId: t.accountId || undefined,
             areaColor: accounts.find(a => a.id === t.accountId)?.color,
+            epicName: t.epicName || undefined,
             isFrog: t.isFrog,
             isTwoMinute: t.isTwoMinute,
             isPriority: t.isPriority,
@@ -236,6 +237,7 @@ export default function TodayPage() {
                     isCompleted: true,
                     accountId: t.accountId || undefined,
                     areaColor: accounts.find(a => a.id === t.accountId)?.color,
+                    epicName: t.epicName || undefined,
                     originalItem: t,
                     badge: undefined,
                     subtasksCount: t.subtasks && t.subtasks.length > 0 ? {
@@ -578,14 +580,35 @@ export default function TodayPage() {
             </div>
 
             {unifiedToday.length === 0 ? (
-                <div style={{ padding: '3rem 1rem', textAlign: 'center', opacity: 0.5 }}>
-                    <p>Your day is clear.</p>
+                <div style={{ padding: '4rem 1rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ fontSize: '3rem' }}>🔥</div>
+                    <div>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: '0 0 0.5rem 0', color: 'var(--foreground)' }}>You crushed today!</h3>
+                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>No more tasks. Go relax and recharge.</p>
+                    </div>
                 </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '2rem' }}>
                     <SomedaySweeper activeTasks={activeTasks} />
 
-                    {unifiedToday.map(item => (
+                    {/* Routines Collapsible */}
+                    {unifiedToday.filter(i => i.type === 'routine').length > 0 && (
+                        <CollapsibleSection title={`Daily Routines (${unifiedToday.filter(i => i.type === 'routine' && !i.isCompleted).length} active)`}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                                {unifiedToday.filter(i => i.type === 'routine').map(item => (
+                                    <UnifiedItemCard
+                                        key={`${item.type}-${item.id}`}
+                                        item={item}
+                                        onToggle={handleToggle}
+                                        onDelete={handleDelete}
+                                    />
+                                ))}
+                            </div>
+                        </CollapsibleSection>
+                    )}
+
+                    {/* Hard Tasks & Meetings */}
+                    {unifiedToday.filter(i => i.type !== 'routine').map(item => (
                         <UnifiedItemCard
                             key={`${item.type}-${item.id}`}
                             item={item}
@@ -599,24 +622,7 @@ export default function TodayPage() {
                 </div>
             )}
 
-            {/* Future Section */}
-            {unifiedFuture.length > 0 && (
-                <CollapsibleSection title={`Upcoming (${unifiedFuture.length})`}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {unifiedFuture.map(item => (
-                            <UnifiedItemCard
-                                key={`${item.type}-${item.id}`}
-                                item={item}
-                                onToggle={handleToggle}
-                                onToggleFrog={handleToggleFrog}
-                                onToggleTwoMinute={handleToggleTwoMinute}
-                                onTogglePriority={handleTogglePriority}
-                                onDelete={handleDelete}
-                            />
-                        ))}
-                    </div>
-                </CollapsibleSection>
-            )}
+
 
             {/* Quick Capture Bar */}
             <div className="quick-capture-bar">
